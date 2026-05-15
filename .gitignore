@@ -1,0 +1,36 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE files
+.idea/
+*.iml
+.vscode/
+
+# Logs and local environment
+*.log
+.env
+.env.*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+release/
+
+# Flutter / Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/coverage/
+**/build/
+
+# Android / iOS generated files
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/ios/Flutter/.last_build_id

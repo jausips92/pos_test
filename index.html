@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="店內點餐" />
+    <meta name="theme-color" content="#242a25" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>店內點餐 POS</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" aria-label="主要頁面">
+        <div class="brand">
+          <span class="brand-mark">POS</span>
+          <span>店內點餐</span>
+        </div>
+        <button class="rail-button active" data-view="order" type="button">點餐</button>
+        <button class="rail-button" data-view="printer" type="button">出單機</button>
+        <button class="rail-button" data-view="menu" type="button">商品</button>
+      </aside>
+
+      <main class="workspace">
+        <section class="view order-view active" id="order-view" aria-label="點餐頁">
+          <div class="product-pane">
+            <header class="view-header">
+              <div>
+                <h1>點餐</h1>
+                <p id="order-summary">選擇商品加入購物車</p>
+              </div>
+              <div class="clock" id="clock">--:--</div>
+            </header>
+            <div class="category-tabs" id="category-tabs" role="tablist" aria-label="商品類別"></div>
+            <div class="product-grid" id="product-grid" aria-live="polite"></div>
+          </div>
+
+          <div class="cart-pane">
+            <header class="cart-header">
+              <div>
+                <h2>購物車</h2>
+                <span id="cart-count">0 項</span>
+              </div>
+              <strong id="cart-total">$0</strong>
+            </header>
+            <div class="cart-list" id="cart-list"></div>
+            <footer class="cart-actions">
+              <button class="secondary danger" id="clear-cart" type="button">清空</button>
+              <button class="primary" id="checkout" type="button">列印單</button>
+            </footer>
+          </div>
+        </section>
+
+        <section class="view settings-view" id="printer-view" aria-label="出單機設定頁">
+          <header class="view-header compact">
+            <div>
+              <h1>出單機設定</h1>
+              <p>私人網路內使用，平板開啟同一個本機網址即可</p>
+            </div>
+          </header>
+          <div class="settings-layout">
+            <form class="setting-panel" id="printer-form">
+              <label for="printer-ip">出單機 IP</label>
+              <input
+                id="printer-ip"
+                name="printerIp"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder="192.168.1.100"
+              />
+              <div class="button-row">
+                <button class="secondary" id="test-printer" type="button">測試連線</button>
+                <button class="primary" type="submit">儲存設定</button>
+              </div>
+              <div class="status-line" id="printer-status" role="status">尚未測試</div>
+            </form>
+            <div class="spec-panel">
+              <h2>簡單部署方式</h2>
+              <ul>
+                <li>用一台店內電腦執行本資料夾的 `node server.js`。</li>
+                <li>兩台 iPad 連同一個 Wi-Fi，開啟電腦顯示的區網網址。</li>
+                <li>Safari 可加入主畫面，看起來就像一般 APP。</li>
+                <li>若出單機支援 AirPrint，可直接用瀏覽器列印；若是 ESC/POS 網路熱感機，下一步加一個小型列印橋接即可。</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="view menu-view" id="menu-view" aria-label="點餐內容設定頁">
+          <header class="view-header compact">
+            <div>
+              <h1>點餐內容設定</h1>
+              <p>管理類別與商品資料</p>
+            </div>
+          </header>
+
+          <div class="admin-layout">
+            <section class="admin-panel" aria-label="類別管理">
+              <div class="panel-title">
+                <h2>類別</h2>
+                <button class="tiny" id="add-category" type="button">新增</button>
+              </div>
+              <div class="admin-list" id="category-admin-list"></div>
+            </section>
+
+            <section class="admin-panel product-admin" aria-label="商品管理">
+              <div class="panel-title">
+                <h2 id="product-panel-title">商品</h2>
+                <button class="tiny" id="add-product" type="button">新增</button>
+              </div>
+              <div class="admin-list products" id="product-admin-list"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="category-dialog">
+      <form method="dialog" class="dialog-form" id="category-form">
+        <h2 id="category-dialog-title">新增類別</h2>
+        <input type="hidden" id="category-id" />
+        <label for="category-name">類別名稱</label>
+        <input id="category-name" required maxlength="16" />
+        <div class="dialog-actions">
+          <button class="secondary" value="cancel" type="button" data-close-dialog>取消</button>
+          <button class="primary" value="confirm" type="submit">儲存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="product-dialog">
+      <form method="dialog" class="dialog-form" id="product-form">
+        <h2 id="product-dialog-title">新增商品</h2>
+        <input type="hidden" id="product-id" />
+        <label for="product-name">商品名稱</label>
+        <input id="product-name" required maxlength="28" />
+        <label for="product-price">價格</label>
+        <input id="product-price" required inputmode="numeric" pattern="[0-9]*" />
+        <label for="product-category">所屬類別</label>
+        <select id="product-category" required></select>
+        <div class="dialog-actions">
+          <button class="secondary" value="cancel" type="button" data-close-dialog>取消</button>
+          <button class="primary" value="confirm" type="submit">儲存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="receipt-dialog">
+      <div class="dialog-form receipt-dialog-form">
+        <div class="dialog-heading">
+          <h2>列印預覽</h2>
+          <button class="icon-button" id="close-receipt" type="button" title="關閉">X</button>
+        </div>
+        <div class="receipt-preview-wrap">
+          <div class="receipt-paper" id="receipt-preview"></div>
+        </div>
+        <div class="dialog-actions">
+          <button class="secondary" id="print-receipt" type="button">列印</button>
+          <button class="primary" id="finish-receipt" type="button">完成並清空</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirm-dialog">
+      <form method="dialog" class="dialog-form confirm-form">
+        <h2 id="confirm-title">確認</h2>
+        <p id="confirm-message"></p>
+        <div class="dialog-actions">
+          <button class="secondary" value="cancel" type="button" data-confirm-cancel>取消</button>
+          <button class="primary danger-fill" value="confirm" type="button" data-confirm-ok>確認</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="receipt-print-root" aria-hidden="true"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

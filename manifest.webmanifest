@@ -1,0 +1,9 @@
+{
+  "name": "店內點餐 POS",
+  "short_name": "點餐 POS",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f2ec",
+  "theme_color": "#242a25",
+  "orientation": "any"
+}
