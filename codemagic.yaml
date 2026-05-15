@@ -1,0 +1,32 @@
+workflows:
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          cd ipad_pos_app
+          flutter pub get
+      - name: Run Flutter tests
+        script: |
+          cd ipad_pos_app
+          flutter test
+      - name: Build unsigned iOS IPA
+        script: |
+          cd ipad_pos_app
+          flutter build ipa --release --no-codesign
+    artifacts:
+      - ipad_pos_app/build/ios/ipa/*.ipa
+      - ipad_pos_app/build/ios/archive/*.xcarchive
