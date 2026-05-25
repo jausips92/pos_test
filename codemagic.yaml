@@ -11,9 +11,6 @@ workflows:
       cocoapods: default
       vars:
         BUNDLE_ID: com.jausips92.ipadpos
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.jausips92.ipadpos
     triggering:
       events:
         - push
@@ -34,6 +31,9 @@ workflows:
         script: |
           cd ipad_pos_app
           keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
           keychain add-certificates
           xcode-project use-profiles
           security find-identity -v -p codesigning
