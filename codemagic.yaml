@@ -19,6 +19,18 @@ workflows:
           include: true
           source: true
     scripts:
+      - name: Check signing environment variables
+        script: |
+          missing=0
+          for name in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required environment variable: $name"
+              missing=1
+            else
+              echo "Found required environment variable: $name"
+            fi
+          done
+          exit $missing
       - name: Get Flutter packages
         script: |
           cd ipad_pos_app
