@@ -1,82 +1,65 @@
 workflows:
-ios-workflow:
-name: iOS Build
-max_build_duration: 60
-instance_type: mac_mini_m2
-environment:
-  groups:
-    - a
-  flutter: stable
-  xcode: latest
-  cocoapods: default
-
-  vars:
-    BUNDLE_ID: com.jausips92.ipadpos
-
-triggering:
-  events:
-    - push
-
-  branch_patterns:
-    - pattern: main
-      include: true
-      source: true
-
-scripts:
-  - name: Check signing environment variables
-    script: |
-      missing=0
-      for name in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
-        if [ -z "${!name}" ]; then
-          echo "Missing required environment variable: $name"
-          missing=1
-        else
-          echo "Found required environment variable: $name"
-        fi
-      done
-      exit $missing
-
-  - name: Get Flutter packages
-    script: |
-      cd ipad_pos_app
-      flutter pub get
-
-  - name: Run Flutter tests
-    script: |
-      cd ipad_pos_app
-      flutter test
-
-  - name: Set up iOS code signing
-    script: |
-      cd ipad_pos_app
-
-      keychain initialize
-
-      app-store-connect fetch-signing-files "$BUNDLE_ID" \
-        --type IOS_APP_STORE \
-        --create
-
-      keychain add-certificates
-
-      xcode-project use-profiles
-
-      security find-identity -v -p codesigning
-
-      ls -la "$HOME/Library/MobileDevice/Provisioning Profiles"
-
-  - name: Build signed iOS IPA
-    script: |
-      cd ipad_pos_app
-
-      flutter build ipa --release \
-        --export-options-plist=/Users/builder/export_options.plist
-
-artifacts:
-  - ipad_pos_app/build/ios/ipa/*.ipa
-  - ipad_pos_app/build/ios/archive/*.xcarchive
-
-publishing:
-  app_store_connect:
-    api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-    key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-    issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - a
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: com.jausips92.ipadpos
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Check signing environment variables
+        script: |
+          missing=0
+          for name in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY CERTIFICATE_PRIVATE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required environment variable: $name"
+              missing=1
+            else
+              echo "Found required environment variable: $name"
+            fi
+          done
+          exit $missing
+      - name: Get Flutter packages
+        script: |
+          cd ipad_pos_app
+          flutter pub get
+      - name: Run Flutter tests
+        script: |
+          cd ipad_pos_app
+          flutter test
+      - name: Set up iOS code signing
+        script: |
+          cd ipad_pos_app
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+          security find-identity -v -p codesigning
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles"
+      - name: Build signed iOS IPA
+        script: |
+          cd ipad_pos_app
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - ipad_pos_app/build/ios/ipa/*.ipa
+      - ipad_pos_app/build/ios/archive/*.xcarchive
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
