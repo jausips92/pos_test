@@ -331,6 +331,7 @@ class ReceiptPrinter {
   static const double _margin = 32;
   static const double _qtyWidth = 92;
   static const double _priceWidth = 112;
+  static const double _itemFontSize = 52;
 
   Future<void> printReceipt({
     required AppSettings settings,
@@ -385,9 +386,9 @@ class ReceiptPrinter {
     final rowPainters = receipt.lines
         .map(
           (line) => _ReceiptRowPainters(
-            name: _textPainter(line.product.name, 34, FontWeight.w800, maxWidth: rowNameWidth, maxLines: 2),
-            quantity: _textPainter('x${line.quantity}', 34, FontWeight.w800, maxWidth: _qtyWidth, align: TextAlign.center),
-            price: _textPainter('${line.product.price}', 34, FontWeight.w800, maxWidth: _priceWidth, align: TextAlign.right),
+            name: _textPainter(line.product.name, _itemFontSize, FontWeight.w800, maxWidth: rowNameWidth, maxLines: 2),
+            quantity: _textPainter('x${line.quantity}', _itemFontSize, FontWeight.w800, maxWidth: _qtyWidth, align: TextAlign.center),
+            price: _textPainter('${line.product.price}', _itemFontSize, FontWeight.w800, maxWidth: _priceWidth, align: TextAlign.right),
           ),
         )
         .toList();
