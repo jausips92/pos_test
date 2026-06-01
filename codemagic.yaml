@@ -1,6 +1,6 @@
 workflows:
   ios-workflow:
-    name: iOS Build
+    name: iOS App Store Release
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
@@ -63,6 +63,6 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-        beta_groups:
-          - "123"
+        submit_to_app_store: true
+        cancel_previous_submissions: true
+        release_type: MANUAL
