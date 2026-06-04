@@ -11,6 +11,9 @@ Thumbs.db
 *.log
 .env
 .env.*
+codemagic_private_key.pem
+codemagic_certificate.csr
+app_store_screenshots/
 
 # Dependencies
 node_modules/
