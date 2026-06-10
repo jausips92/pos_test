@@ -16,30 +16,43 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
 
 
 def icon(size: int) -> Image.Image:
-    img = Image.new("RGB", (size, size), "#15543d")
+    img = Image.new("RGB", (size, size), "#080604")
     draw = ImageDraw.Draw(img)
 
-    pad = size * 0.14
-    ticket = (pad, size * 0.18, size - pad, size * 0.74)
-    radius = max(4, int(size * 0.085))
-    draw.rounded_rectangle(ticket, radius=radius, fill="#fffdfa")
+    for y in range(size):
+        ratio = y / max(1, size - 1)
+        r = int(6 + 18 * ratio)
+        g = int(5 + 9 * ratio)
+        b = int(4 + 3 * ratio)
+        draw.line((0, y, size, y), fill=(r, g, b))
 
-    notch_r = size * 0.06
-    cy = size * 0.46
-    draw.ellipse((pad - notch_r, cy - notch_r, pad + notch_r, cy + notch_r), fill="#15543d")
-    draw.ellipse((size - pad - notch_r, cy - notch_r, size - pad + notch_r, cy + notch_r), fill="#15543d")
+    gold = "#f5c338"
+    dark_gold = "#a56f16"
+    margin = int(size * 0.09)
+    for inset, width, color in (
+        (margin, max(2, int(size * 0.013)), gold),
+        (int(size * 0.125), max(1, int(size * 0.004)), dark_gold),
+    ):
+        draw.ellipse(
+            (inset, inset, size - inset, size - inset),
+            outline=color,
+            width=width,
+        )
 
-    line_color = "#217a59"
-    for y in (0.31, 0.42, 0.53):
-        yy = int(size * y)
-        draw.rounded_rectangle((size * 0.27, yy, size * 0.73, yy + max(2, size * 0.018)), radius=max(1, int(size * 0.009)), fill=line_color)
+    f = font(max(18, int(size * 0.245)), True)
+    chars = "湖南味"
+    bboxes = [draw.textbbox((0, 0), ch, font=f) for ch in chars]
+    widths = [box[2] - box[0] for box in bboxes]
+    heights = [box[3] - box[1] for box in bboxes]
+    gap = int(size * 0.035)
+    total_height = sum(heights) + gap * (len(chars) - 1)
+    y = (size - total_height) / 2 - size * 0.01
 
-    label = "yupos"
-    f = font(max(8, int(size * 0.145)), True)
-    bbox = draw.textbbox((0, 0), label, font=f)
-    tw = bbox[2] - bbox[0]
-    th = bbox[3] - bbox[1]
-    draw.text(((size - tw) / 2, size * 0.79 - th / 2), label, font=f, fill="#ffffff")
+    for ch, box, tw, th in zip(chars, bboxes, widths, heights):
+        x = (size - tw) / 2 - box[0]
+        draw.text((x + size * 0.01, y - box[1] + size * 0.012), ch, font=f, fill="#5a3308")
+        draw.text((x, y - box[1]), ch, font=f, fill=gold)
+        y += th + gap
 
     return img
 
