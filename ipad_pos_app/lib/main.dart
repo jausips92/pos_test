@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -21,6 +22,9 @@ const _railActive = Color(0xfff8f1df);
 const _cartBg = Color(0xffebe4d9);
 const _softButton = Color(0xffe7e0d4);
 const _radius = 8.0;
+const _defaultMenuSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/1Ku0jeMB1VOI5Uryeqt5dgghAQbOccMdJyPLtSpxnJAU/export?format=csv&gid=0';
+const _defaultMenuScriptUrl =
+    'https://script.google.com/macros/s/AKfycbyhifDzVHC47TOf5tODLMZ9RJmhmKAAfpnsPJUUnbf28Gu-zw9MWijBBTAWQnsPq87DoA/exec';
 
 ButtonStyle _primaryButtonStyle() {
   return FilledButton.styleFrom(
@@ -147,10 +151,68 @@ class CartLine {
 }
 
 class AppSettings {
-  const AppSettings({required this.printerIp, required this.printerPort});
+  const AppSettings({
+    required this.printerIp,
+    required this.printerPort,
+    required this.receiptFontSize,
+    required this.menuSheetUrl,
+    required this.menuScriptUrl,
+  });
 
   final String printerIp;
   final int printerPort;
+  final double receiptFontSize;
+  final String menuSheetUrl;
+  final String menuScriptUrl;
+}
+
+double _normalizeReceiptFontSize(double? value) {
+  final size = value ?? 52;
+  return size > 0 ? size : 52;
+}
+
+int _columnIndex(List<String> header, List<String> aliases) {
+  for (final alias in aliases) {
+    final index = header.indexOf(alias.toLowerCase());
+    if (index != -1) return index;
+  }
+  return -1;
+}
+
+List<List<String>> _parseCsvRows(String source) {
+  final rows = <List<String>>[];
+  var row = <String>[];
+  final cell = StringBuffer();
+  var inQuotes = false;
+
+  for (var i = 0; i < source.length; i++) {
+    final char = source[i];
+    if (char == '"') {
+      if (inQuotes && i + 1 < source.length && source[i + 1] == '"') {
+        cell.write('"');
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char == ',' && !inQuotes) {
+      row.add(cell.toString());
+      cell.clear();
+    } else if ((char == '\n' || char == '\r') && !inQuotes) {
+      if (char == '\r' && i + 1 < source.length && source[i + 1] == '\n') i++;
+      row.add(cell.toString());
+      cell.clear();
+      rows.add(row);
+      row = <String>[];
+    } else {
+      cell.write(char);
+    }
+  }
+
+  if (cell.isNotEmpty || row.isNotEmpty) {
+    row.add(cell.toString());
+    rows.add(row);
+  }
+  return rows;
 }
 
 class OrderReceipt {
@@ -236,6 +298,9 @@ class PosDatabase {
 
     await db.insert('settings', {'key': 'printer_ip', 'value': ''});
     await db.insert('settings', {'key': 'printer_port', 'value': '9100'});
+    await db.insert('settings', {'key': 'receipt_font_size', 'value': '52'});
+    await db.insert('settings', {'key': 'menu_sheet_url', 'value': _defaultMenuSheetCsvUrl});
+    await db.insert('settings', {'key': 'menu_script_url', 'value': _defaultMenuScriptUrl});
   }
 
   Future<List<Category>> categories() async {
@@ -297,6 +362,9 @@ class PosDatabase {
     return AppSettings(
       printerIp: map['printer_ip'] ?? '',
       printerPort: int.tryParse(map['printer_port'] ?? '') ?? 9100,
+      receiptFontSize: _normalizeReceiptFontSize(double.tryParse(map['receipt_font_size'] ?? '')),
+      menuSheetUrl: _defaultMenuSheetCsvUrl,
+      menuScriptUrl: _defaultMenuScriptUrl,
     );
   }
 
@@ -308,6 +376,120 @@ class PosDatabase {
       {'key': 'printer_port', 'value': settings.printerPort.toString()},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await db.insert(
+      'settings',
+      {'key': 'receipt_font_size', 'value': settings.receiptFontSize.toStringAsFixed(0)},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'menu_sheet_url', 'value': settings.menuSheetUrl.trim()},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'menu_script_url', 'value': settings.menuScriptUrl.trim()},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int> syncMenuFromSheetUrl(String sheetUrl) async {
+    final uri = Uri.tryParse(sheetUrl.trim());
+    if (uri == null || !uri.hasScheme) {
+      throw const FormatException('Google Sheet CSV URL 格式不正確');
+    }
+
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(uri).timeout(const Duration(seconds: 8));
+      final response = await request.close().timeout(const Duration(seconds: 8));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Google Sheet 讀取失敗：HTTP ${response.statusCode}');
+      }
+
+      final csvText = await response.transform(utf8.decoder).join();
+      final rows = _parseCsvRows(csvText);
+      if (rows.isEmpty) throw const FormatException('Google Sheet 沒有資料');
+
+      final header = rows.first.map((cell) => cell.trim().toLowerCase()).toList();
+      final categoryIndex = _columnIndex(header, const ['分類', '類別', 'category']);
+      final nameIndex = _columnIndex(header, const ['品項', '商品', '商品名稱', 'name', 'item']);
+      final priceIndex = _columnIndex(header, const ['價格', '單價', 'price']);
+      if (categoryIndex == -1 || nameIndex == -1 || priceIndex == -1) {
+        throw const FormatException('Google Sheet 欄位需包含：分類、品項、價格');
+      }
+
+      final parsedRows = <({String category, String name, int price})>[];
+      for (final row in rows.skip(1)) {
+        if (row.every((cell) => cell.trim().isEmpty)) continue;
+        if (row.length <= categoryIndex || row.length <= nameIndex || row.length <= priceIndex) continue;
+
+        final category = row[categoryIndex].trim();
+        final name = row[nameIndex].trim();
+        final priceText = row[priceIndex].trim().replaceAll(',', '');
+        final price = int.tryParse(priceText);
+        if (category.isEmpty || name.isEmpty || price == null) continue;
+        parsedRows.add((category: category, name: name, price: price));
+      }
+      if (parsedRows.isEmpty) throw const FormatException('Google Sheet 沒有可用商品');
+
+      final db = await database;
+      await db.transaction((txn) async {
+        await txn.delete('products');
+        await txn.delete('categories');
+
+        final categoryIds = <String, int>{};
+        for (final row in parsedRows) {
+          var categoryId = categoryIds[row.category];
+          if (categoryId == null) {
+            categoryId = await txn.insert('categories', {'name': row.category});
+            categoryIds[row.category] = categoryId;
+          }
+          await txn.insert('products', {'category_id': categoryId, 'name': row.name, 'price': row.price});
+        }
+      });
+      return parsedRows.length;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<void> pushMenuToSheetUrl(String scriptUrl) async {
+    final uri = Uri.tryParse(scriptUrl.trim());
+    if (uri == null || !uri.hasScheme) {
+      throw const FormatException('Google Apps Script URL 格式不正確');
+    }
+
+    final categoriesById = {for (final category in await categories()) category.id: category.name};
+    final menuRows = (await products())
+        .map(
+          (product) => {
+            'category': categoriesById[product.categoryId] ?? '',
+            'name': product.name,
+            'price': product.price,
+          },
+        )
+        .where((row) => (row['category'] as String).isNotEmpty)
+        .toList();
+
+    final client = HttpClient();
+    try {
+      final request = await client.postUrl(uri).timeout(const Duration(seconds: 8));
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'action': 'replaceMenu', 'rows': menuRows}));
+      final response = await request.close().timeout(const Duration(seconds: 12));
+      final responseText = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Google Sheet 回寫失敗：HTTP ${response.statusCode}');
+      }
+
+      final data = jsonDecode(responseText) as Map<String, Object?>;
+      if (data['ok'] != true) {
+        throw FormatException('${data['error'] ?? 'Google Sheet 回寫失敗'}');
+      }
+    } finally {
+      client.close(force: true);
+    }
   }
 
   Future<String> nextOrderNumber(DateTime now) async {
@@ -331,7 +513,6 @@ class ReceiptPrinter {
   static const double _margin = 32;
   static const double _qtyWidth = 92;
   static const double _priceWidth = 112;
-  static const double _itemFontSize = 52;
 
   Future<void> printReceipt({
     required AppSettings settings,
@@ -346,7 +527,7 @@ class ReceiptPrinter {
       settings.printerPort,
       timeout: const Duration(seconds: 3),
     );
-    final raster = await _receiptRaster(receipt);
+    final raster = await _receiptRaster(receipt, itemFontSize: settings.receiptFontSize);
 
     // Render as a raster image so Chinese text does not depend on the printer code page.
     socket.add([0x1b, 0x40]);
@@ -379,16 +560,17 @@ class ReceiptPrinter {
     return '${safeName.padRight(12)} ${quantity.padLeft(4)} ${price.padLeft(5)}';
   }
 
-  Future<Uint8List> _receiptRaster(OrderReceipt receipt) async {
+  Future<Uint8List> _receiptRaster(OrderReceipt receipt, {required double itemFontSize}) async {
     final width = _paperDots;
     final contentWidth = width - (_margin * 2);
     final rowNameWidth = contentWidth - _qtyWidth - _priceWidth;
+    final normalizedItemFontSize = _normalizeReceiptFontSize(itemFontSize);
     final rowPainters = receipt.lines
         .map(
           (line) => _ReceiptRowPainters(
-            name: _textPainter(line.product.name, _itemFontSize, FontWeight.w800, maxWidth: rowNameWidth, maxLines: 2),
-            quantity: _textPainter('x${line.quantity}', _itemFontSize, FontWeight.w800, maxWidth: _qtyWidth, align: TextAlign.center),
-            price: _textPainter('${line.product.price}', _itemFontSize, FontWeight.w800, maxWidth: _priceWidth, align: TextAlign.right),
+            name: _textPainter(line.product.name, normalizedItemFontSize, FontWeight.w800, maxWidth: rowNameWidth, maxLines: 2),
+            quantity: _textPainter('x${line.quantity}', normalizedItemFontSize, FontWeight.w800, maxWidth: _qtyWidth, align: TextAlign.center),
+            price: _textPainter('${line.product.price}', normalizedItemFontSize, FontWeight.w800, maxWidth: _priceWidth, align: TextAlign.right),
           ),
         )
         .toList();
@@ -547,14 +729,22 @@ class _PosHomePageState extends State<PosHomePage> {
   int? _activeCategoryId;
   int? _activeAdminCategoryId;
   int _pageIndex = 0;
-  AppSettings _settings = const AppSettings(printerIp: '', printerPort: 9100);
+  AppSettings _settings = const AppSettings(
+    printerIp: '',
+    printerPort: 9100,
+    receiptFontSize: 52,
+    menuSheetUrl: _defaultMenuSheetCsvUrl,
+    menuScriptUrl: _defaultMenuScriptUrl,
+  );
   bool _loading = true;
   bool _checkingOut = false;
+  bool _syncingMenu = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _syncMenuOnStartup();
   }
 
   Future<void> _load() async {
@@ -580,6 +770,16 @@ class _PosHomePageState extends State<PosHomePage> {
       _activeAdminCategoryId = nextActiveAdminCategoryId;
       _loading = false;
     });
+  }
+
+  Future<void> _syncMenuOnStartup() async {
+    try {
+      await _database.syncMenuFromSheetUrl(_defaultMenuSheetCsvUrl);
+      if (!mounted) return;
+      await _load();
+    } catch (_) {
+      // Keep the local menu usable when the device is offline or Google Sheet is unreachable.
+    }
   }
 
   List<CartLine> get _cartLines {
@@ -623,7 +823,7 @@ class _PosHomePageState extends State<PosHomePage> {
           onClear: _confirmClearCart,
           onCheckout: _checkout,
         ),
-      1 => _PrinterPage(settings: _settings, onSave: _saveSettings, onTest: _testPrinter),
+      1 => _PrinterPage(settings: _settings, syncingMenu: _syncingMenu, onSave: _saveSettings, onTest: _testPrinter, onSyncMenu: _syncMenu),
       _ => _MenuAdminPage(
           categories: _categories,
           products: _products,
@@ -705,6 +905,33 @@ class _PosHomePageState extends State<PosHomePage> {
     _snack('出單機設定已儲存');
   }
 
+  Future<void> _syncMenu(AppSettings settings) async {
+    if (_syncingMenu) return;
+
+    setState(() => _syncingMenu = true);
+    try {
+      await _database.saveSettings(settings);
+      final count = await _database.syncMenuFromSheetUrl(_defaultMenuSheetCsvUrl);
+      _cart.clear();
+      await _load();
+      _snack('菜單已同步：$count 個商品');
+    } catch (error) {
+      _snack('菜單同步失敗：$error');
+    } finally {
+      if (mounted) setState(() => _syncingMenu = false);
+    }
+  }
+
+  Future<void> _pushMenuIfConfigured() async {
+    if (_defaultMenuScriptUrl.trim().isEmpty) return;
+    try {
+      await _database.pushMenuToSheetUrl(_defaultMenuScriptUrl);
+      _snack('菜單已同步回 Google Sheet');
+    } catch (error) {
+      _snack('本機已更新，但同步 Google Sheet 失敗：$error');
+    }
+  }
+
   Future<void> _testPrinter(AppSettings settings) async {
     try {
       final socket = await Socket.connect(settings.printerIp, settings.printerPort, timeout: const Duration(seconds: 3));
@@ -725,6 +952,7 @@ class _PosHomePageState extends State<PosHomePage> {
       await _database.updateCategory(category, name.trim());
     }
     await _load();
+    await _pushMenuIfConfigured();
   }
 
   Future<void> _deleteCategory(Category category) async {
@@ -733,6 +961,7 @@ class _PosHomePageState extends State<PosHomePage> {
     await _database.deleteCategory(category);
     _cart.removeWhere((productId, _) => !_products.any((product) => product.id == productId));
     await _load();
+    await _pushMenuIfConfigured();
   }
 
   Future<void> _editProduct([Product? product]) async {
@@ -752,6 +981,7 @@ class _PosHomePageState extends State<PosHomePage> {
     }
     _activeAdminCategoryId = result.categoryId;
     await _load();
+    await _pushMenuIfConfigured();
   }
 
   Future<void> _deleteProduct(Product product) async {
@@ -760,6 +990,7 @@ class _PosHomePageState extends State<PosHomePage> {
     await _database.deleteProduct(product);
     setState(() => _cart.remove(product.id));
     await _load();
+    await _pushMenuIfConfigured();
   }
 
   Future<String?> _textDialog({required String title, required String label, required String initialValue}) {
@@ -1172,11 +1403,13 @@ class _QuantityButton extends StatelessWidget {
 }
 
 class _PrinterPage extends StatefulWidget {
-  const _PrinterPage({required this.settings, required this.onSave, required this.onTest});
+  const _PrinterPage({required this.settings, required this.syncingMenu, required this.onSave, required this.onTest, required this.onSyncMenu});
 
   final AppSettings settings;
+  final bool syncingMenu;
   final ValueChanged<AppSettings> onSave;
   final ValueChanged<AppSettings> onTest;
+  final ValueChanged<AppSettings> onSyncMenu;
 
   @override
   State<_PrinterPage> createState() => _PrinterPageState();
@@ -1185,18 +1418,21 @@ class _PrinterPage extends StatefulWidget {
 class _PrinterPageState extends State<_PrinterPage> {
   late final TextEditingController _ipController;
   late final TextEditingController _portController;
+  late final TextEditingController _fontSizeController;
 
   @override
   void initState() {
     super.initState();
     _ipController = TextEditingController(text: widget.settings.printerIp);
     _portController = TextEditingController(text: widget.settings.printerPort.toString());
+    _fontSizeController = TextEditingController(text: widget.settings.receiptFontSize.toStringAsFixed(0));
   }
 
   @override
   void dispose() {
     _ipController.dispose();
     _portController.dispose();
+    _fontSizeController.dispose();
     super.dispose();
   }
 
@@ -1222,6 +1458,30 @@ class _PrinterPageState extends State<_PrinterPage> {
                 decoration: _fieldDecoration('Port'),
               ),
               const SizedBox(height: 12),
+              TextField(
+                controller: _fontSizeController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontSize: 20),
+                decoration: _fieldDecoration('出單字大小'),
+              ),
+              const SizedBox(height: 6),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('建議 40-60，未填預設 52。', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: widget.syncingMenu ? null : () => widget.onSyncMenu(_settings()),
+                  style: _secondaryButtonStyle(foregroundColor: _greenDark),
+                  icon: widget.syncingMenu
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.sync),
+                  label: Text(widget.syncingMenu ? '同步中...' : '同步 Google Sheet 菜單'),
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(child: OutlinedButton(onPressed: () => widget.onTest(_settings()), style: _secondaryButtonStyle(), child: const Text('測試連線'))),
@@ -1237,7 +1497,13 @@ class _PrinterPageState extends State<_PrinterPage> {
   }
 
   AppSettings _settings() {
-    return AppSettings(printerIp: _ipController.text.trim(), printerPort: int.tryParse(_portController.text.trim()) ?? 9100);
+    return AppSettings(
+      printerIp: _ipController.text.trim(),
+      printerPort: int.tryParse(_portController.text.trim()) ?? 9100,
+      receiptFontSize: _normalizeReceiptFontSize(double.tryParse(_fontSizeController.text.trim())),
+      menuSheetUrl: _defaultMenuSheetCsvUrl,
+      menuScriptUrl: _defaultMenuScriptUrl,
+    );
   }
 }
 
