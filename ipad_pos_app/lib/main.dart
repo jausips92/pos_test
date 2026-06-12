@@ -25,6 +25,24 @@ const _radius = 8.0;
 const _defaultMenuSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/1Ku0jeMB1VOI5Uryeqt5dgghAQbOccMdJyPLtSpxnJAU/export?format=csv&gid=0';
 const _defaultMenuScriptUrl =
     'https://script.google.com/macros/s/AKfycbyhifDzVHC47TOf5tODLMZ9RJmhmKAAfpnsPJUUnbf28Gu-zw9MWijBBTAWQnsPq87DoA/exec';
+const _defaultReceiptFontFamily = 'Microsoft JhengHei';
+const _receiptFontOptions = <({String label, String family})>[
+  (label: '微軟正黑體', family: 'Microsoft JhengHei'),
+  (label: '新細明體', family: 'PMingLiU'),
+  (label: '標楷體', family: 'DFKai-SB'),
+];
+const _defaultReceiptPriceMode = 'newLine';
+const _receiptPriceModeOptions = <({String label, String value})>[
+  (label: '價格換行', value: 'newLine'),
+  (label: '價格同列靠右', value: 'sameLine'),
+  (label: '不列印價格', value: 'hidden'),
+];
+const _defaultProductButtonSize = 'standard';
+const _productButtonSizeOptions = <({String label, String value, double ratio})>[
+  (label: '緊湊', value: 'compact', ratio: 1.55),
+  (label: '標準', value: 'standard', ratio: 1.30),
+  (label: '大按鈕', value: 'large', ratio: 1.08),
+];
 
 ButtonStyle _primaryButtonStyle() {
   return FilledButton.styleFrom(
@@ -155,6 +173,10 @@ class AppSettings {
     required this.printerIp,
     required this.printerPort,
     required this.receiptFontSize,
+    required this.receiptFontFamily,
+    required this.receiptPriceMode,
+    required this.productButtonSize,
+    required this.productColumns,
     required this.menuSheetUrl,
     required this.menuScriptUrl,
   });
@@ -162,8 +184,44 @@ class AppSettings {
   final String printerIp;
   final int printerPort;
   final double receiptFontSize;
+  final String receiptFontFamily;
+  final String receiptPriceMode;
+  final String productButtonSize;
+  final int productColumns;
   final String menuSheetUrl;
   final String menuScriptUrl;
+}
+
+String _normalizeOption(String? value, List<({String label, String value})> options, String fallback) {
+  final selected = value?.trim();
+  if (selected == null || selected.isEmpty) return fallback;
+  return options.any((option) => option.value == selected) ? selected : fallback;
+}
+
+String _normalizeReceiptPriceMode(String? value) => _normalizeOption(value, _receiptPriceModeOptions, _defaultReceiptPriceMode);
+
+String _normalizeProductButtonSize(String? value) {
+  final selected = value?.trim();
+  if (selected == null || selected.isEmpty) return _defaultProductButtonSize;
+  return _productButtonSizeOptions.any((option) => option.value == selected) ? selected : _defaultProductButtonSize;
+}
+
+int _normalizeProductColumns(int? value) {
+  final columns = value ?? 0;
+  if (columns < 0) return 0;
+  if (columns > 6) return 6;
+  return columns;
+}
+
+double _productButtonRatio(String value) {
+  final normalized = _normalizeProductButtonSize(value);
+  return _productButtonSizeOptions.firstWhere((option) => option.value == normalized).ratio;
+}
+
+String _normalizeReceiptFontFamily(String? value) {
+  final family = value?.trim();
+  if (family == null || family.isEmpty) return _defaultReceiptFontFamily;
+  return _receiptFontOptions.any((option) => option.family == family) ? family : _defaultReceiptFontFamily;
 }
 
 double _normalizeReceiptFontSize(double? value) {
@@ -299,6 +357,10 @@ class PosDatabase {
     await db.insert('settings', {'key': 'printer_ip', 'value': ''});
     await db.insert('settings', {'key': 'printer_port', 'value': '9100'});
     await db.insert('settings', {'key': 'receipt_font_size', 'value': '52'});
+    await db.insert('settings', {'key': 'receipt_font_family', 'value': _defaultReceiptFontFamily});
+    await db.insert('settings', {'key': 'receipt_price_mode', 'value': _defaultReceiptPriceMode});
+    await db.insert('settings', {'key': 'product_button_size', 'value': _defaultProductButtonSize});
+    await db.insert('settings', {'key': 'product_columns', 'value': '0'});
     await db.insert('settings', {'key': 'menu_sheet_url', 'value': _defaultMenuSheetCsvUrl});
     await db.insert('settings', {'key': 'menu_script_url', 'value': _defaultMenuScriptUrl});
   }
@@ -363,6 +425,10 @@ class PosDatabase {
       printerIp: map['printer_ip'] ?? '',
       printerPort: int.tryParse(map['printer_port'] ?? '') ?? 9100,
       receiptFontSize: _normalizeReceiptFontSize(double.tryParse(map['receipt_font_size'] ?? '')),
+      receiptFontFamily: _normalizeReceiptFontFamily(map['receipt_font_family']),
+      receiptPriceMode: _normalizeReceiptPriceMode(map['receipt_price_mode']),
+      productButtonSize: _normalizeProductButtonSize(map['product_button_size']),
+      productColumns: _normalizeProductColumns(int.tryParse(map['product_columns'] ?? '')),
       menuSheetUrl: _defaultMenuSheetCsvUrl,
       menuScriptUrl: _defaultMenuScriptUrl,
     );
@@ -379,6 +445,26 @@ class PosDatabase {
     await db.insert(
       'settings',
       {'key': 'receipt_font_size', 'value': settings.receiptFontSize.toStringAsFixed(0)},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'receipt_font_family', 'value': _normalizeReceiptFontFamily(settings.receiptFontFamily)},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'receipt_price_mode', 'value': _normalizeReceiptPriceMode(settings.receiptPriceMode)},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'product_button_size', 'value': _normalizeProductButtonSize(settings.productButtonSize)},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'product_columns', 'value': _normalizeProductColumns(settings.productColumns).toString()},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await db.insert(
@@ -479,6 +565,9 @@ class PosDatabase {
       request.write(jsonEncode({'action': 'replaceMenu', 'rows': menuRows}));
       final response = await request.close().timeout(const Duration(seconds: 12));
       final responseText = await response.transform(utf8.decoder).join();
+      if (response.statusCode == 302 || response.statusCode == 303) {
+        return;
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException('Google Sheet 回寫失敗：HTTP ${response.statusCode}');
       }
@@ -487,6 +576,45 @@ class PosDatabase {
       if (data['ok'] != true) {
         throw FormatException('${data['error'] ?? 'Google Sheet 回寫失敗'}');
       }
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<String> nextOrderNumberFromSheetUrl(String scriptUrl, DateTime now) async {
+    final uri = Uri.tryParse(scriptUrl.trim());
+    if (uri == null || !uri.hasScheme) {
+      throw const FormatException('Google Apps Script URL 格式不正確');
+    }
+
+    final dateCode = _dateCode(now);
+    final requestUri = uri.replace(
+      queryParameters: {
+        ...uri.queryParameters,
+        'action': 'nextOrderNumber',
+        'dateCode': dateCode,
+      },
+    );
+
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(requestUri).timeout(const Duration(seconds: 8));
+      request.followRedirects = true;
+      final response = await request.close().timeout(const Duration(seconds: 12));
+      final responseText = await response.transform(utf8.decoder).join();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Google Sheet 單號取得失敗：HTTP ${response.statusCode}');
+      }
+
+      final data = jsonDecode(responseText) as Map<String, Object?>;
+      if (data['ok'] != true) {
+        throw FormatException('${data['error'] ?? 'Google Sheet 單號取得失敗'}');
+      }
+      final orderNumber = '${data['orderNumber'] ?? ''}'.trim();
+      if (orderNumber.isEmpty) {
+        throw const FormatException('Google Sheet 單號回傳為空');
+      }
+      return orderNumber;
     } finally {
       client.close(force: true);
     }
@@ -527,7 +655,12 @@ class ReceiptPrinter {
       settings.printerPort,
       timeout: const Duration(seconds: 3),
     );
-    final raster = await _receiptRaster(receipt, itemFontSize: settings.receiptFontSize);
+    final raster = await _receiptRaster(
+      receipt,
+      itemFontSize: settings.receiptFontSize,
+      fontFamily: settings.receiptFontFamily,
+      priceMode: settings.receiptPriceMode,
+    );
 
     // Render as a raster image so Chinese text does not depend on the printer code page.
     socket.add([0x1b, 0x40]);
@@ -546,45 +679,59 @@ class ReceiptPrinter {
     buffer.writeln('================================');
     buffer.writeln('單號:${receipt.orderNumber}');
     buffer.writeln('================================');
-    buffer.writeln(_threeColumns('品項', '數量', '單價'));
+    final priceMode = _normalizeReceiptPriceMode(receipt.lines.isEmpty ? _defaultReceiptPriceMode : _defaultReceiptPriceMode);
+    buffer.writeln(_twoColumns('品項', '數量'));
     for (final line in receipt.lines) {
-      buffer.writeln(_threeColumns(line.product.name, 'x${line.quantity}', '${line.product.price}'));
+      buffer.writeln(_twoColumns(line.product.name, 'x${line.quantity}'));
+      if (priceMode != 'hidden') buffer.writeln('${line.product.price * line.quantity}');
     }
     buffer.writeln('================================');
     buffer.writeln('列印時間:${_printTime(receipt.printedAt)}');
     return buffer.toString();
   }
 
-  String _threeColumns(String name, String quantity, String price) {
+  String _twoColumns(String name, String quantity) {
     final safeName = name.length > 12 ? name.substring(0, 12) : name;
-    return '${safeName.padRight(12)} ${quantity.padLeft(4)} ${price.padLeft(5)}';
+    return '${safeName.padRight(12)} ${quantity.padLeft(4)}';
   }
 
-  Future<Uint8List> _receiptRaster(OrderReceipt receipt, {required double itemFontSize}) async {
+  Future<Uint8List> _receiptRaster(OrderReceipt receipt, {required double itemFontSize, required String fontFamily, required String priceMode}) async {
     final width = _paperDots;
     final contentWidth = width - (_margin * 2);
-    final rowNameWidth = contentWidth - _qtyWidth - _priceWidth;
+    final normalizedPriceMode = _normalizeReceiptPriceMode(priceMode);
+    final priceOnNewLine = normalizedPriceMode == 'newLine';
+    final priceSameLine = normalizedPriceMode == 'sameLine';
+    final showPrice = normalizedPriceMode != 'hidden';
+    final rowNameWidth = contentWidth - _qtyWidth - (priceSameLine ? _priceWidth : 0);
     final normalizedItemFontSize = _normalizeReceiptFontSize(itemFontSize);
+    final normalizedFontFamily = _normalizeReceiptFontFamily(fontFamily);
     final rowPainters = receipt.lines
         .map(
           (line) => _ReceiptRowPainters(
-            name: _textPainter(line.product.name, normalizedItemFontSize, FontWeight.w800, maxWidth: rowNameWidth, maxLines: 2),
-            quantity: _textPainter('x${line.quantity}', normalizedItemFontSize, FontWeight.w800, maxWidth: _qtyWidth, align: TextAlign.center),
-            price: _textPainter('${line.product.price}', normalizedItemFontSize, FontWeight.w800, maxWidth: _priceWidth, align: TextAlign.right),
+            name: _textPainter(line.product.name, normalizedItemFontSize, FontWeight.w600, maxWidth: rowNameWidth, fontFamily: normalizedFontFamily, maxLines: 2),
+            quantity: _textPainter('x${line.quantity}', normalizedItemFontSize, FontWeight.w600, maxWidth: _qtyWidth, fontFamily: normalizedFontFamily, align: TextAlign.center),
+            price: _textPainter(
+              showPrice ? '${line.product.price * line.quantity}' : '',
+              normalizedItemFontSize,
+              FontWeight.w600,
+              maxWidth: priceSameLine ? _priceWidth : contentWidth,
+              fontFamily: normalizedFontFamily,
+              align: priceSameLine ? TextAlign.right : TextAlign.left,
+            ),
           ),
         )
         .toList();
 
     double height = 28;
     height += 18;
-    height += _textPainter('單號:${receipt.orderNumber}', 34, FontWeight.w800, maxWidth: contentWidth, align: TextAlign.center).height + 14;
+    height += _textPainter('單號:${receipt.orderNumber}', 34, FontWeight.w600, maxWidth: contentWidth, fontFamily: normalizedFontFamily, align: TextAlign.center).height + 14;
     height += 18;
     height += 42;
     for (final row in rowPainters) {
-      height += row.height + 12;
+      height += row.nameQuantityHeight + (priceOnNewLine ? row.price.height + 4 : 0) + 12;
     }
     height += 20;
-    height += _textPainter('列印時間:${_printTime(receipt.printedAt)}', 24, FontWeight.w700, maxWidth: contentWidth, align: TextAlign.center).height + 42;
+    height += _textPainter('列印時間:${_printTime(receipt.printedAt)}', 24, FontWeight.w500, maxWidth: contentWidth, fontFamily: normalizedFontFamily, align: TextAlign.center).height + 42;
 
     final imageHeight = height.ceil();
     final recorder = ui.PictureRecorder();
@@ -595,25 +742,35 @@ class ReceiptPrinter {
     double y = 24;
     _drawDivider(canvas, y, width);
     y += 18;
-    y = _drawText(canvas, '單號:${receipt.orderNumber}', _margin, y, contentWidth, 34, FontWeight.w800, align: TextAlign.center) + 10;
+    y = _drawText(canvas, '單號:${receipt.orderNumber}', _margin, y, contentWidth, 34, FontWeight.w600, fontFamily: normalizedFontFamily, align: TextAlign.center) + 10;
     _drawDivider(canvas, y, width);
     y += 18;
-    _drawText(canvas, '品項', _margin, y, rowNameWidth, 26, FontWeight.w700);
-    _drawText(canvas, '數量', _margin + rowNameWidth, y, _qtyWidth, 26, FontWeight.w700, align: TextAlign.center);
-    _drawText(canvas, '單價', _margin + rowNameWidth + _qtyWidth, y, _priceWidth, 26, FontWeight.w700, align: TextAlign.right);
+    _drawText(canvas, '品項', _margin, y, rowNameWidth, 26, FontWeight.w500, fontFamily: normalizedFontFamily);
+    _drawText(canvas, '數量', _margin + rowNameWidth, y, _qtyWidth, 26, FontWeight.w500, fontFamily: normalizedFontFamily, align: TextAlign.center);
+    if (priceSameLine) {
+      _drawText(canvas, '金額', _margin + rowNameWidth + _qtyWidth, y, _priceWidth, 26, FontWeight.w500, fontFamily: normalizedFontFamily, align: TextAlign.right);
+    }
     y += 42;
 
     for (final row in rowPainters) {
       row.name.paint(canvas, Offset(_margin, y));
       row.quantity.paint(canvas, Offset(_margin + rowNameWidth, y));
-      row.price.paint(canvas, Offset(_margin + rowNameWidth + _qtyWidth, y));
-      y += row.height + 12;
+      if (priceSameLine) {
+        row.price.paint(canvas, Offset(_margin + rowNameWidth + _qtyWidth, y));
+      }
+      y += row.nameQuantityHeight;
+      if (priceOnNewLine) {
+        y += 4;
+        row.price.paint(canvas, Offset(_margin, y));
+        y += row.price.height;
+      }
+      y += 12;
     }
 
     y += 6;
     _drawDivider(canvas, y, width);
     y += 18;
-    _drawText(canvas, '列印時間:${_printTime(receipt.printedAt)}', _margin, y, contentWidth, 24, FontWeight.w700, align: TextAlign.center);
+    _drawText(canvas, '列印時間:${_printTime(receipt.printedAt)}', _margin, y, contentWidth, 24, FontWeight.w500, fontFamily: normalizedFontFamily, align: TextAlign.center);
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(width, imageHeight);
@@ -629,11 +786,22 @@ class ReceiptPrinter {
     double fontSize,
     FontWeight fontWeight, {
     required double maxWidth,
+    required String fontFamily,
     TextAlign align = TextAlign.left,
     int? maxLines,
   }) {
     final painter = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(color: Colors.black, fontSize: fontSize, fontWeight: fontWeight, height: 1.1)),
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          fontFamily: fontFamily,
+          fontFamilyFallback: const ['PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'sans-serif'],
+          height: 1.1,
+        ),
+      ),
       textDirection: TextDirection.ltr,
       textAlign: align,
       maxLines: maxLines,
@@ -651,9 +819,10 @@ class ReceiptPrinter {
     double maxWidth,
     double fontSize,
     FontWeight fontWeight, {
+    required String fontFamily,
     TextAlign align = TextAlign.left,
   }) {
-    final painter = _textPainter(text, fontSize, fontWeight, maxWidth: maxWidth, align: align);
+    final painter = _textPainter(text, fontSize, fontWeight, maxWidth: maxWidth, fontFamily: fontFamily, align: align);
     painter.paint(canvas, Offset(x, y));
     return y + painter.height;
   }
@@ -704,10 +873,9 @@ class _ReceiptRowPainters {
   final TextPainter quantity;
   final TextPainter price;
 
-  double get height {
+  double get nameQuantityHeight {
     var result = name.height;
     if (quantity.height > result) result = quantity.height;
-    if (price.height > result) result = price.height;
     return result;
   }
 }
@@ -733,6 +901,10 @@ class _PosHomePageState extends State<PosHomePage> {
     printerIp: '',
     printerPort: 9100,
     receiptFontSize: 52,
+    receiptFontFamily: _defaultReceiptFontFamily,
+    receiptPriceMode: _defaultReceiptPriceMode,
+    productButtonSize: _defaultProductButtonSize,
+    productColumns: 0,
     menuSheetUrl: _defaultMenuSheetCsvUrl,
     menuScriptUrl: _defaultMenuScriptUrl,
   );
@@ -807,7 +979,7 @@ class _PosHomePageState extends State<PosHomePage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final isNarrow = MediaQuery.sizeOf(context).width < 720;
+    final isNarrow = MediaQuery.sizeOf(context).width < 700;
     final page = switch (_pageIndex) {
       0 => _OrderPage(
           categories: _categories,
@@ -816,6 +988,7 @@ class _PosHomePageState extends State<PosHomePage> {
           cartLines: _cartLines,
           cartCount: _cartCount,
           cartTotal: _cartTotal,
+          settings: _settings,
           checkingOut: _checkingOut,
           onCategorySelected: (id) => setState(() => _activeCategoryId = id),
           onProductTap: _addToCart,
@@ -884,7 +1057,7 @@ class _PosHomePageState extends State<PosHomePage> {
     try {
       final now = DateTime.now();
       final receipt = OrderReceipt(
-        orderNumber: await _database.nextOrderNumber(now),
+        orderNumber: await _nextOrderNumber(now),
         printedAt: now,
         lines: lines,
       );
@@ -939,6 +1112,14 @@ class _PosHomePageState extends State<PosHomePage> {
       _snack('連線成功');
     } catch (_) {
       _snack('連線失敗');
+    }
+  }
+
+  Future<String> _nextOrderNumber(DateTime now) async {
+    try {
+      return await _database.nextOrderNumberFromSheetUrl(_defaultMenuScriptUrl, now);
+    } catch (_) {
+      return _database.nextOrderNumber(now);
     }
   }
 
@@ -1029,7 +1210,16 @@ class _PosHomePageState extends State<PosHomePage> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1300),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+      ),
+    );
   }
 }
 
@@ -1148,6 +1338,7 @@ class _OrderPage extends StatelessWidget {
     required this.cartLines,
     required this.cartCount,
     required this.cartTotal,
+    required this.settings,
     required this.checkingOut,
     required this.onCategorySelected,
     required this.onProductTap,
@@ -1162,6 +1353,7 @@ class _OrderPage extends StatelessWidget {
   final List<CartLine> cartLines;
   final int cartCount;
   final int cartTotal;
+  final AppSettings settings;
   final bool checkingOut;
   final ValueChanged<int> onCategorySelected;
   final ValueChanged<Product> onProductTap;
@@ -1172,7 +1364,10 @@ class _OrderPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visibleProducts = products.where((product) => product.categoryId == activeCategoryId).toList();
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
+    final columns = _normalizeProductColumns(settings.productColumns);
+    final crossAxisCount = columns == 0 ? (isWide ? 4 : 2) : columns;
+    final productRatio = _productButtonRatio(settings.productButtonSize);
 
     final productPane = Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
@@ -1208,8 +1403,8 @@ class _OrderPage extends StatelessWidget {
             child: GridView.builder(
               itemCount: visibleProducts.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isWide ? 4 : 2,
-                childAspectRatio: isWide ? 1.6 : 1.38,
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: productRatio,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
@@ -1419,6 +1614,10 @@ class _PrinterPageState extends State<_PrinterPage> {
   late final TextEditingController _ipController;
   late final TextEditingController _portController;
   late final TextEditingController _fontSizeController;
+  late final TextEditingController _productColumnsController;
+  late String _receiptFontFamily;
+  late String _receiptPriceMode;
+  late String _productButtonSize;
 
   @override
   void initState() {
@@ -1426,6 +1625,10 @@ class _PrinterPageState extends State<_PrinterPage> {
     _ipController = TextEditingController(text: widget.settings.printerIp);
     _portController = TextEditingController(text: widget.settings.printerPort.toString());
     _fontSizeController = TextEditingController(text: widget.settings.receiptFontSize.toStringAsFixed(0));
+    _productColumnsController = TextEditingController(text: widget.settings.productColumns.toString());
+    _receiptFontFamily = _normalizeReceiptFontFamily(widget.settings.receiptFontFamily);
+    _receiptPriceMode = _normalizeReceiptPriceMode(widget.settings.receiptPriceMode);
+    _productButtonSize = _normalizeProductButtonSize(widget.settings.productButtonSize);
   }
 
   @override
@@ -1433,6 +1636,7 @@ class _PrinterPageState extends State<_PrinterPage> {
     _ipController.dispose();
     _portController.dispose();
     _fontSizeController.dispose();
+    _productColumnsController.dispose();
     super.dispose();
   }
 
@@ -1470,6 +1674,59 @@ class _PrinterPageState extends State<_PrinterPage> {
                 child: Text('建議 40-60，未填預設 52。', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
               ),
               const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _receiptFontFamily,
+                decoration: _fieldDecoration('出單字型'),
+                items: _receiptFontOptions
+                    .map(
+                      (option) => DropdownMenuItem<String>(
+                        value: option.family,
+                        child: Text(option.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _receiptFontFamily = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _receiptPriceMode,
+                decoration: _fieldDecoration('價格列印方式'),
+                items: _receiptPriceModeOptions
+                    .map((option) => DropdownMenuItem<String>(value: option.value, child: Text(option.label)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _receiptPriceMode = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _productButtonSize,
+                decoration: _fieldDecoration('商品按鈕大小'),
+                items: _productButtonSizeOptions
+                    .map((option) => DropdownMenuItem<String>(value: option.value, child: Text(option.label)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _productButtonSize = value);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _productColumnsController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontSize: 20),
+                decoration: _fieldDecoration('每列商品數量'),
+              ),
+              const SizedBox(height: 6),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('填 0 為自動，建議手機 2、iPad mini 3、11 吋平板 4。', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -1501,6 +1758,10 @@ class _PrinterPageState extends State<_PrinterPage> {
       printerIp: _ipController.text.trim(),
       printerPort: int.tryParse(_portController.text.trim()) ?? 9100,
       receiptFontSize: _normalizeReceiptFontSize(double.tryParse(_fontSizeController.text.trim())),
+      receiptFontFamily: _normalizeReceiptFontFamily(_receiptFontFamily),
+      receiptPriceMode: _normalizeReceiptPriceMode(_receiptPriceMode),
+      productButtonSize: _normalizeProductButtonSize(_productButtonSize),
+      productColumns: _normalizeProductColumns(int.tryParse(_productColumnsController.text.trim())),
       menuSheetUrl: _defaultMenuSheetCsvUrl,
       menuScriptUrl: _defaultMenuScriptUrl,
     );
@@ -1534,7 +1795,7 @@ class _MenuAdminPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
     final selectedCategory = _firstWhereOrNull(categories, (category) => category.id == selectedCategoryId);
     final visibleProducts = selectedCategory == null
         ? <Product>[]
