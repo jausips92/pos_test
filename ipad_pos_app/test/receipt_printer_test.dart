@@ -20,10 +20,10 @@ void main() {
     expect(text, contains('單號:2605090001'));
     expect(text, contains('品項'));
     expect(text, contains('數量'));
-    expect(text, contains('單價'));
+    expect(text, isNot(contains('單價')));
     expect(text, contains('陽春麵'));
     expect(text, contains('x1'));
-    expect(text, contains('40'));
+    expect(text, contains('陽春麵            x1\n40'));
     expect(text, contains('列印時間:2026-05-09 14:41:20'));
   });
 }
