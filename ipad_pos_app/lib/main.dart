@@ -22,7 +22,8 @@ const _railActive = Color(0xfff8f1df);
 const _cartBg = Color(0xffebe4d9);
 const _softButton = Color(0xffe7e0d4);
 const _radius = 8.0;
-const _defaultMenuSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/1Ku0jeMB1VOI5Uryeqt5dgghAQbOccMdJyPLtSpxnJAU/export?format=csv&gid=0';
+const _defaultMenuSheetCsvUrl =
+    'https://docs.google.com/spreadsheets/d/1Ku0jeMB1VOI5Uryeqt5dgghAQbOccMdJyPLtSpxnJAU/export?format=csv&gid=0';
 const _defaultMenuScriptUrl =
     'https://script.google.com/macros/s/AKfycbyhifDzVHC47TOf5tODLMZ9RJmhmKAAfpnsPJUUnbf28Gu-zw9MWijBBTAWQnsPq87DoA/exec';
 const _defaultReceiptFontFamily = 'Microsoft JhengHei';
@@ -38,7 +39,8 @@ const _receiptPriceModeOptions = <({String label, String value})>[
   (label: '不列印價格', value: 'hidden'),
 ];
 const _defaultProductButtonSize = 'standard';
-const _productButtonSizeOptions = <({String label, String value, double ratio})>[
+const _productButtonSizeOptions =
+    <({String label, String value, double ratio})>[
   (label: '緊湊', value: 'compact', ratio: 1.55),
   (label: '標準', value: 'standard', ratio: 1.30),
   (label: '大按鈕', value: 'large', ratio: 1.08),
@@ -99,7 +101,9 @@ BoxDecoration _panelDecoration() {
     color: _panel,
     border: Border.all(color: _line),
     borderRadius: BorderRadius.circular(_radius),
-    boxShadow: const [BoxShadow(color: Color(0x1a27221a), blurRadius: 30, offset: Offset(0, 10))],
+    boxShadow: const [
+      BoxShadow(color: Color(0x1a27221a), blurRadius: 30, offset: Offset(0, 10))
+    ],
   );
 }
 
@@ -116,10 +120,17 @@ class PosApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: '店內點餐 POS',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: _green, surface: _panel, onSurface: _ink),
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: _green, surface: _panel, onSurface: _ink),
         scaffoldBackgroundColor: _bg,
-        fontFamilyFallback: const ['Noto Sans TC', 'Microsoft JhengHei', 'sans-serif'],
-        textTheme: ThemeData.light().textTheme.apply(bodyColor: _ink, displayColor: _ink),
+        fontFamilyFallback: const [
+          'Noto Sans TC',
+          'Microsoft JhengHei',
+          'sans-serif'
+        ],
+        textTheme: ThemeData.light()
+            .textTheme
+            .apply(bodyColor: _ink, displayColor: _ink),
         useMaterial3: true,
       ),
       home: const PosHomePage(),
@@ -173,6 +184,7 @@ class AppSettings {
     required this.printerIp,
     required this.printerPort,
     required this.receiptFontSize,
+    required this.receiptLineSpacing,
     required this.receiptFontFamily,
     required this.receiptPriceMode,
     required this.productButtonSize,
@@ -184,6 +196,7 @@ class AppSettings {
   final String printerIp;
   final int printerPort;
   final double receiptFontSize;
+  final double receiptLineSpacing;
   final String receiptFontFamily;
   final String receiptPriceMode;
   final String productButtonSize;
@@ -192,18 +205,24 @@ class AppSettings {
   final String menuScriptUrl;
 }
 
-String _normalizeOption(String? value, List<({String label, String value})> options, String fallback) {
+String _normalizeOption(String? value,
+    List<({String label, String value})> options, String fallback) {
   final selected = value?.trim();
   if (selected == null || selected.isEmpty) return fallback;
-  return options.any((option) => option.value == selected) ? selected : fallback;
+  return options.any((option) => option.value == selected)
+      ? selected
+      : fallback;
 }
 
-String _normalizeReceiptPriceMode(String? value) => _normalizeOption(value, _receiptPriceModeOptions, _defaultReceiptPriceMode);
+String _normalizeReceiptPriceMode(String? value) =>
+    _normalizeOption(value, _receiptPriceModeOptions, _defaultReceiptPriceMode);
 
 String _normalizeProductButtonSize(String? value) {
   final selected = value?.trim();
   if (selected == null || selected.isEmpty) return _defaultProductButtonSize;
-  return _productButtonSizeOptions.any((option) => option.value == selected) ? selected : _defaultProductButtonSize;
+  return _productButtonSizeOptions.any((option) => option.value == selected)
+      ? selected
+      : _defaultProductButtonSize;
 }
 
 int _normalizeProductColumns(int? value) {
@@ -215,18 +234,27 @@ int _normalizeProductColumns(int? value) {
 
 double _productButtonRatio(String value) {
   final normalized = _normalizeProductButtonSize(value);
-  return _productButtonSizeOptions.firstWhere((option) => option.value == normalized).ratio;
+  return _productButtonSizeOptions
+      .firstWhere((option) => option.value == normalized)
+      .ratio;
 }
 
 String _normalizeReceiptFontFamily(String? value) {
   final family = value?.trim();
   if (family == null || family.isEmpty) return _defaultReceiptFontFamily;
-  return _receiptFontOptions.any((option) => option.family == family) ? family : _defaultReceiptFontFamily;
+  return _receiptFontOptions.any((option) => option.family == family)
+      ? family
+      : _defaultReceiptFontFamily;
 }
 
 double _normalizeReceiptFontSize(double? value) {
   final size = value ?? 52;
   return size > 0 ? size : 52;
+}
+
+double _normalizeReceiptLineSpacing(double? value) {
+  final spacing = value ?? 12;
+  return spacing >= 0 ? spacing : 12;
 }
 
 int _columnIndex(List<String> header, List<String> aliases) {
@@ -357,12 +385,18 @@ class PosDatabase {
     await db.insert('settings', {'key': 'printer_ip', 'value': ''});
     await db.insert('settings', {'key': 'printer_port', 'value': '9100'});
     await db.insert('settings', {'key': 'receipt_font_size', 'value': '52'});
-    await db.insert('settings', {'key': 'receipt_font_family', 'value': _defaultReceiptFontFamily});
-    await db.insert('settings', {'key': 'receipt_price_mode', 'value': _defaultReceiptPriceMode});
-    await db.insert('settings', {'key': 'product_button_size', 'value': _defaultProductButtonSize});
+    await db.insert('settings', {'key': 'receipt_line_spacing', 'value': '12'});
+    await db.insert('settings',
+        {'key': 'receipt_font_family', 'value': _defaultReceiptFontFamily});
+    await db.insert('settings',
+        {'key': 'receipt_price_mode', 'value': _defaultReceiptPriceMode});
+    await db.insert('settings',
+        {'key': 'product_button_size', 'value': _defaultProductButtonSize});
     await db.insert('settings', {'key': 'product_columns', 'value': '0'});
-    await db.insert('settings', {'key': 'menu_sheet_url', 'value': _defaultMenuSheetCsvUrl});
-    await db.insert('settings', {'key': 'menu_script_url', 'value': _defaultMenuScriptUrl});
+    await db.insert('settings',
+        {'key': 'menu_sheet_url', 'value': _defaultMenuSheetCsvUrl});
+    await db.insert(
+        'settings', {'key': 'menu_script_url', 'value': _defaultMenuScriptUrl});
   }
 
   Future<List<Category>> categories() async {
@@ -384,16 +418,21 @@ class PosDatabase {
 
   Future<void> updateCategory(Category category, String name) async {
     final db = await database;
-    await db.update('categories', {'name': name}, where: 'id = ?', whereArgs: [category.id]);
+    await db.update('categories', {'name': name},
+        where: 'id = ?', whereArgs: [category.id]);
   }
 
   Future<void> deleteCategory(Category category) async {
     final db = await database;
-    await db.delete('products', where: 'category_id = ?', whereArgs: [category.id]);
+    await db
+        .delete('products', where: 'category_id = ?', whereArgs: [category.id]);
     await db.delete('categories', where: 'id = ?', whereArgs: [category.id]);
   }
 
-  Future<int> addProduct({required String name, required int price, required int categoryId}) async {
+  Future<int> addProduct(
+      {required String name,
+      required int price,
+      required int categoryId}) async {
     final db = await database;
     return db.insert('products', {
       'name': name,
@@ -402,7 +441,10 @@ class PosDatabase {
     });
   }
 
-  Future<void> updateProduct(Product product, {required String name, required int price, required int categoryId}) async {
+  Future<void> updateProduct(Product product,
+      {required String name,
+      required int price,
+      required int categoryId}) async {
     final db = await database;
     await db.update(
       'products',
@@ -420,15 +462,23 @@ class PosDatabase {
   Future<AppSettings> settings() async {
     final db = await database;
     final rows = await db.query('settings');
-    final map = {for (final row in rows) row['key'] as String: row['value'] as String};
+    final map = {
+      for (final row in rows) row['key'] as String: row['value'] as String
+    };
     return AppSettings(
       printerIp: map['printer_ip'] ?? '',
       printerPort: int.tryParse(map['printer_port'] ?? '') ?? 9100,
-      receiptFontSize: _normalizeReceiptFontSize(double.tryParse(map['receipt_font_size'] ?? '')),
-      receiptFontFamily: _normalizeReceiptFontFamily(map['receipt_font_family']),
+      receiptFontSize: _normalizeReceiptFontSize(
+          double.tryParse(map['receipt_font_size'] ?? '')),
+      receiptLineSpacing: _normalizeReceiptLineSpacing(
+          double.tryParse(map['receipt_line_spacing'] ?? '')),
+      receiptFontFamily:
+          _normalizeReceiptFontFamily(map['receipt_font_family']),
       receiptPriceMode: _normalizeReceiptPriceMode(map['receipt_price_mode']),
-      productButtonSize: _normalizeProductButtonSize(map['product_button_size']),
-      productColumns: _normalizeProductColumns(int.tryParse(map['product_columns'] ?? '')),
+      productButtonSize:
+          _normalizeProductButtonSize(map['product_button_size']),
+      productColumns:
+          _normalizeProductColumns(int.tryParse(map['product_columns'] ?? '')),
       menuSheetUrl: _defaultMenuSheetCsvUrl,
       menuScriptUrl: _defaultMenuScriptUrl,
     );
@@ -436,7 +486,9 @@ class PosDatabase {
 
   Future<void> saveSettings(AppSettings settings) async {
     final db = await database;
-    await db.insert('settings', {'key': 'printer_ip', 'value': settings.printerIp}, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert(
+        'settings', {'key': 'printer_ip', 'value': settings.printerIp},
+        conflictAlgorithm: ConflictAlgorithm.replace);
     await db.insert(
       'settings',
       {'key': 'printer_port', 'value': settings.printerPort.toString()},
@@ -444,27 +496,50 @@ class PosDatabase {
     );
     await db.insert(
       'settings',
-      {'key': 'receipt_font_size', 'value': settings.receiptFontSize.toStringAsFixed(0)},
+      {
+        'key': 'receipt_font_size',
+        'value': settings.receiptFontSize.toStringAsFixed(0)
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await db.insert(
       'settings',
-      {'key': 'receipt_font_family', 'value': _normalizeReceiptFontFamily(settings.receiptFontFamily)},
+      {
+        'key': 'receipt_line_spacing',
+        'value': settings.receiptLineSpacing.toStringAsFixed(0)
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await db.insert(
       'settings',
-      {'key': 'receipt_price_mode', 'value': _normalizeReceiptPriceMode(settings.receiptPriceMode)},
+      {
+        'key': 'receipt_font_family',
+        'value': _normalizeReceiptFontFamily(settings.receiptFontFamily)
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await db.insert(
       'settings',
-      {'key': 'product_button_size', 'value': _normalizeProductButtonSize(settings.productButtonSize)},
+      {
+        'key': 'receipt_price_mode',
+        'value': _normalizeReceiptPriceMode(settings.receiptPriceMode)
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await db.insert(
       'settings',
-      {'key': 'product_columns', 'value': _normalizeProductColumns(settings.productColumns).toString()},
+      {
+        'key': 'product_button_size',
+        'value': _normalizeProductButtonSize(settings.productButtonSize)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'product_columns',
+        'value': _normalizeProductColumns(settings.productColumns).toString()
+      },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     await db.insert(
@@ -487,8 +562,10 @@ class PosDatabase {
 
     final client = HttpClient();
     try {
-      final request = await client.getUrl(uri).timeout(const Duration(seconds: 8));
-      final response = await request.close().timeout(const Duration(seconds: 8));
+      final request =
+          await client.getUrl(uri).timeout(const Duration(seconds: 8));
+      final response =
+          await request.close().timeout(const Duration(seconds: 8));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException('Google Sheet 讀取失敗：HTTP ${response.statusCode}');
       }
@@ -497,9 +574,12 @@ class PosDatabase {
       final rows = _parseCsvRows(csvText);
       if (rows.isEmpty) throw const FormatException('Google Sheet 沒有資料');
 
-      final header = rows.first.map((cell) => cell.trim().toLowerCase()).toList();
-      final categoryIndex = _columnIndex(header, const ['分類', '類別', 'category']);
-      final nameIndex = _columnIndex(header, const ['品項', '商品', '商品名稱', 'name', 'item']);
+      final header =
+          rows.first.map((cell) => cell.trim().toLowerCase()).toList();
+      final categoryIndex =
+          _columnIndex(header, const ['分類', '類別', 'category']);
+      final nameIndex =
+          _columnIndex(header, const ['品項', '商品', '商品名稱', 'name', 'item']);
       final priceIndex = _columnIndex(header, const ['價格', '單價', 'price']);
       if (categoryIndex == -1 || nameIndex == -1 || priceIndex == -1) {
         throw const FormatException('Google Sheet 欄位需包含：分類、品項、價格');
@@ -508,7 +588,9 @@ class PosDatabase {
       final parsedRows = <({String category, String name, int price})>[];
       for (final row in rows.skip(1)) {
         if (row.every((cell) => cell.trim().isEmpty)) continue;
-        if (row.length <= categoryIndex || row.length <= nameIndex || row.length <= priceIndex) continue;
+        if (row.length <= categoryIndex ||
+            row.length <= nameIndex ||
+            row.length <= priceIndex) continue;
 
         final category = row[categoryIndex].trim();
         final name = row[nameIndex].trim();
@@ -517,7 +599,8 @@ class PosDatabase {
         if (category.isEmpty || name.isEmpty || price == null) continue;
         parsedRows.add((category: category, name: name, price: price));
       }
-      if (parsedRows.isEmpty) throw const FormatException('Google Sheet 沒有可用商品');
+      if (parsedRows.isEmpty)
+        throw const FormatException('Google Sheet 沒有可用商品');
 
       final db = await database;
       await db.transaction((txn) async {
@@ -531,7 +614,11 @@ class PosDatabase {
             categoryId = await txn.insert('categories', {'name': row.category});
             categoryIds[row.category] = categoryId;
           }
-          await txn.insert('products', {'category_id': categoryId, 'name': row.name, 'price': row.price});
+          await txn.insert('products', {
+            'category_id': categoryId,
+            'name': row.name,
+            'price': row.price
+          });
         }
       });
       return parsedRows.length;
@@ -546,7 +633,9 @@ class PosDatabase {
       throw const FormatException('Google Apps Script URL 格式不正確');
     }
 
-    final categoriesById = {for (final category in await categories()) category.id: category.name};
+    final categoriesById = {
+      for (final category in await categories()) category.id: category.name
+    };
     final menuRows = (await products())
         .map(
           (product) => {
@@ -560,10 +649,12 @@ class PosDatabase {
 
     final client = HttpClient();
     try {
-      final request = await client.postUrl(uri).timeout(const Duration(seconds: 8));
+      final request =
+          await client.postUrl(uri).timeout(const Duration(seconds: 8));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode({'action': 'replaceMenu', 'rows': menuRows}));
-      final response = await request.close().timeout(const Duration(seconds: 12));
+      final response =
+          await request.close().timeout(const Duration(seconds: 12));
       final responseText = await response.transform(utf8.decoder).join();
       if (response.statusCode == 302 || response.statusCode == 303) {
         return;
@@ -581,7 +672,8 @@ class PosDatabase {
     }
   }
 
-  Future<String> nextOrderNumberFromSheetUrl(String scriptUrl, DateTime now) async {
+  Future<String> nextOrderNumberFromSheetUrl(
+      String scriptUrl, DateTime now) async {
     final uri = Uri.tryParse(scriptUrl.trim());
     if (uri == null || !uri.hasScheme) {
       throw const FormatException('Google Apps Script URL 格式不正確');
@@ -598,9 +690,11 @@ class PosDatabase {
 
     final client = HttpClient();
     try {
-      final request = await client.getUrl(requestUri).timeout(const Duration(seconds: 8));
+      final request =
+          await client.getUrl(requestUri).timeout(const Duration(seconds: 8));
       request.followRedirects = true;
-      final response = await request.close().timeout(const Duration(seconds: 12));
+      final response =
+          await request.close().timeout(const Duration(seconds: 12));
       final responseText = await response.transform(utf8.decoder).join();
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException('Google Sheet 單號取得失敗：HTTP ${response.statusCode}');
@@ -624,7 +718,8 @@ class PosDatabase {
     final db = await database;
     final dateCode = _dateCode(now);
     return db.transaction((txn) async {
-      final rows = await txn.query('order_sequence', where: 'date_code = ?', whereArgs: [dateCode]);
+      final rows = await txn.query('order_sequence',
+          where: 'date_code = ?', whereArgs: [dateCode]);
       final next = rows.isEmpty ? 1 : (rows.first['sequence'] as int) + 1;
       await txn.insert(
         'order_sequence',
@@ -658,6 +753,7 @@ class ReceiptPrinter {
     final raster = await _receiptRaster(
       receipt,
       itemFontSize: settings.receiptFontSize,
+      lineSpacing: settings.receiptLineSpacing,
       fontFamily: settings.receiptFontFamily,
       priceMode: settings.receiptPriceMode,
     );
@@ -679,11 +775,14 @@ class ReceiptPrinter {
     buffer.writeln('================================');
     buffer.writeln('單號:${receipt.orderNumber}');
     buffer.writeln('================================');
-    final priceMode = _normalizeReceiptPriceMode(receipt.lines.isEmpty ? _defaultReceiptPriceMode : _defaultReceiptPriceMode);
+    final priceMode = _normalizeReceiptPriceMode(receipt.lines.isEmpty
+        ? _defaultReceiptPriceMode
+        : _defaultReceiptPriceMode);
     buffer.writeln(_twoColumns('品項', '數量'));
     for (final line in receipt.lines) {
       buffer.writeln(_twoColumns(line.product.name, 'x${line.quantity}'));
-      if (priceMode != 'hidden') buffer.writeln('${line.product.price * line.quantity}');
+      if (priceMode != 'hidden')
+        buffer.writeln('${line.product.price * line.quantity}');
     }
     buffer.writeln('================================');
     buffer.writeln('列印時間:${_printTime(receipt.printedAt)}');
@@ -695,21 +794,38 @@ class ReceiptPrinter {
     return '${safeName.padRight(12)} ${quantity.padLeft(4)}';
   }
 
-  Future<Uint8List> _receiptRaster(OrderReceipt receipt, {required double itemFontSize, required String fontFamily, required String priceMode}) async {
+  Future<Uint8List> _receiptRaster(
+    OrderReceipt receipt, {
+    required double itemFontSize,
+    required double lineSpacing,
+    required String fontFamily,
+    required String priceMode,
+  }) async {
     final width = _paperDots;
     final contentWidth = width - (_margin * 2);
     final normalizedPriceMode = _normalizeReceiptPriceMode(priceMode);
     final priceOnNewLine = normalizedPriceMode == 'newLine';
     final priceSameLine = normalizedPriceMode == 'sameLine';
     final showPrice = normalizedPriceMode != 'hidden';
-    final rowNameWidth = contentWidth - _qtyWidth - (priceSameLine ? _priceWidth : 0);
+    final rowNameWidth =
+        contentWidth - _qtyWidth - (priceSameLine ? _priceWidth : 0);
     final normalizedItemFontSize = _normalizeReceiptFontSize(itemFontSize);
+    final normalizedLineSpacing = _normalizeReceiptLineSpacing(lineSpacing);
+    final priceLineSpacing = normalizedLineSpacing / 3;
     final normalizedFontFamily = _normalizeReceiptFontFamily(fontFamily);
     final rowPainters = receipt.lines
         .map(
           (line) => _ReceiptRowPainters(
-            name: _textPainter(line.product.name, normalizedItemFontSize, FontWeight.w600, maxWidth: rowNameWidth, fontFamily: normalizedFontFamily, maxLines: 2),
-            quantity: _textPainter('x${line.quantity}', normalizedItemFontSize, FontWeight.w600, maxWidth: _qtyWidth, fontFamily: normalizedFontFamily, align: TextAlign.center),
+            name: _textPainter(
+                line.product.name, normalizedItemFontSize, FontWeight.w600,
+                maxWidth: rowNameWidth,
+                fontFamily: normalizedFontFamily,
+                maxLines: 2),
+            quantity: _textPainter(
+                'x${line.quantity}', normalizedItemFontSize, FontWeight.w600,
+                maxWidth: _qtyWidth,
+                fontFamily: normalizedFontFamily,
+                align: TextAlign.center),
             price: _textPainter(
               showPrice ? '${line.product.price * line.quantity}' : '',
               normalizedItemFontSize,
@@ -724,31 +840,53 @@ class ReceiptPrinter {
 
     double height = 28;
     height += 18;
-    height += _textPainter('單號:${receipt.orderNumber}', 34, FontWeight.w600, maxWidth: contentWidth, fontFamily: normalizedFontFamily, align: TextAlign.center).height + 14;
+    height += _textPainter('單號:${receipt.orderNumber}', 34, FontWeight.w600,
+                maxWidth: contentWidth,
+                fontFamily: normalizedFontFamily,
+                align: TextAlign.center)
+            .height +
+        14;
     height += 18;
     height += 42;
     for (final row in rowPainters) {
-      height += row.nameQuantityHeight + (priceOnNewLine ? row.price.height + 4 : 0) + 12;
+      height += row.nameQuantityHeight +
+          (priceOnNewLine ? row.price.height + priceLineSpacing : 0) +
+          normalizedLineSpacing;
     }
     height += 20;
-    height += _textPainter('列印時間:${_printTime(receipt.printedAt)}', 24, FontWeight.w500, maxWidth: contentWidth, fontFamily: normalizedFontFamily, align: TextAlign.center).height + 42;
+    height += _textPainter(
+                '列印時間:${_printTime(receipt.printedAt)}', 24, FontWeight.w500,
+                maxWidth: contentWidth,
+                fontFamily: normalizedFontFamily,
+                align: TextAlign.center)
+            .height +
+        42;
 
     final imageHeight = height.ceil();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     final paint = Paint()..color = Colors.white;
-    canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), imageHeight.toDouble()), paint);
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, width.toDouble(), imageHeight.toDouble()), paint);
 
     double y = 24;
     _drawDivider(canvas, y, width);
     y += 18;
-    y = _drawText(canvas, '單號:${receipt.orderNumber}', _margin, y, contentWidth, 34, FontWeight.w600, fontFamily: normalizedFontFamily, align: TextAlign.center) + 10;
+    y = _drawText(canvas, '單號:${receipt.orderNumber}', _margin, y, contentWidth,
+            34, FontWeight.w600,
+            fontFamily: normalizedFontFamily, align: TextAlign.center) +
+        10;
     _drawDivider(canvas, y, width);
     y += 18;
-    _drawText(canvas, '品項', _margin, y, rowNameWidth, 26, FontWeight.w500, fontFamily: normalizedFontFamily);
-    _drawText(canvas, '數量', _margin + rowNameWidth, y, _qtyWidth, 26, FontWeight.w500, fontFamily: normalizedFontFamily, align: TextAlign.center);
+    _drawText(canvas, '品項', _margin, y, rowNameWidth, 26, FontWeight.w500,
+        fontFamily: normalizedFontFamily);
+    _drawText(
+        canvas, '數量', _margin + rowNameWidth, y, _qtyWidth, 26, FontWeight.w500,
+        fontFamily: normalizedFontFamily, align: TextAlign.center);
     if (priceSameLine) {
-      _drawText(canvas, '金額', _margin + rowNameWidth + _qtyWidth, y, _priceWidth, 26, FontWeight.w500, fontFamily: normalizedFontFamily, align: TextAlign.right);
+      _drawText(canvas, '金額', _margin + rowNameWidth + _qtyWidth, y,
+          _priceWidth, 26, FontWeight.w500,
+          fontFamily: normalizedFontFamily, align: TextAlign.right);
     }
     y += 42;
 
@@ -760,17 +898,19 @@ class ReceiptPrinter {
       }
       y += row.nameQuantityHeight;
       if (priceOnNewLine) {
-        y += 4;
+        y += priceLineSpacing;
         row.price.paint(canvas, Offset(_margin, y));
         y += row.price.height;
       }
-      y += 12;
+      y += normalizedLineSpacing;
     }
 
     y += 6;
     _drawDivider(canvas, y, width);
     y += 18;
-    _drawText(canvas, '列印時間:${_printTime(receipt.printedAt)}', _margin, y, contentWidth, 24, FontWeight.w500, fontFamily: normalizedFontFamily, align: TextAlign.center);
+    _drawText(canvas, '列印時間:${_printTime(receipt.printedAt)}', _margin, y,
+        contentWidth, 24, FontWeight.w500,
+        fontFamily: normalizedFontFamily, align: TextAlign.center);
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(width, imageHeight);
@@ -798,7 +938,12 @@ class ReceiptPrinter {
           fontSize: fontSize,
           fontWeight: fontWeight,
           fontFamily: fontFamily,
-          fontFamilyFallback: const ['PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', 'sans-serif'],
+          fontFamilyFallback: const [
+            'PingFang TC',
+            'Noto Sans TC',
+            'Microsoft JhengHei',
+            'sans-serif'
+          ],
           height: 1.1,
         ),
       ),
@@ -822,7 +967,8 @@ class ReceiptPrinter {
     required String fontFamily,
     TextAlign align = TextAlign.left,
   }) {
-    final painter = _textPainter(text, fontSize, fontWeight, maxWidth: maxWidth, fontFamily: fontFamily, align: align);
+    final painter = _textPainter(text, fontSize, fontWeight,
+        maxWidth: maxWidth, fontFamily: fontFamily, align: align);
     painter.paint(canvas, Offset(x, y));
     return y + painter.height;
   }
@@ -867,7 +1013,8 @@ class ReceiptPrinter {
 }
 
 class _ReceiptRowPainters {
-  const _ReceiptRowPainters({required this.name, required this.quantity, required this.price});
+  const _ReceiptRowPainters(
+      {required this.name, required this.quantity, required this.price});
 
   final TextPainter name;
   final TextPainter quantity;
@@ -901,6 +1048,7 @@ class _PosHomePageState extends State<PosHomePage> {
     printerIp: '',
     printerPort: 9100,
     receiptFontSize: 52,
+    receiptLineSpacing: 12,
     receiptFontFamily: _defaultReceiptFontFamily,
     receiptPriceMode: _defaultReceiptPriceMode,
     productButtonSize: _defaultProductButtonSize,
@@ -923,16 +1071,18 @@ class _PosHomePageState extends State<PosHomePage> {
     final categories = await _database.categories();
     final products = await _database.products();
     final settings = await _database.settings();
-    final nextActiveCategoryId = categories.any((category) => category.id == _activeCategoryId)
-        ? _activeCategoryId
-        : categories.isEmpty
-            ? null
-            : categories.first.id;
-    final nextActiveAdminCategoryId = categories.any((category) => category.id == _activeAdminCategoryId)
-        ? _activeAdminCategoryId
-        : categories.isEmpty
-            ? null
-            : categories.first.id;
+    final nextActiveCategoryId =
+        categories.any((category) => category.id == _activeCategoryId)
+            ? _activeCategoryId
+            : categories.isEmpty
+                ? null
+                : categories.first.id;
+    final nextActiveAdminCategoryId =
+        categories.any((category) => category.id == _activeAdminCategoryId)
+            ? _activeAdminCategoryId
+            : categories.isEmpty
+                ? null
+                : categories.first.id;
 
     setState(() {
       _categories = categories;
@@ -957,7 +1107,8 @@ class _PosHomePageState extends State<PosHomePage> {
   List<CartLine> get _cartLines {
     return _cart.entries
         .map((entry) {
-          final product = _firstWhereOrNull(_products, (item) => item.id == entry.key);
+          final product =
+              _firstWhereOrNull(_products, (item) => item.id == entry.key);
           if (product == null) return null;
           return CartLine(product: product, quantity: entry.value);
         })
@@ -966,7 +1117,8 @@ class _PosHomePageState extends State<PosHomePage> {
   }
 
   int get _cartTotal {
-    return _cartLines.fold(0, (sum, line) => sum + line.product.price * line.quantity);
+    return _cartLines.fold(
+        0, (sum, line) => sum + line.product.price * line.quantity);
   }
 
   int get _cartCount {
@@ -996,7 +1148,12 @@ class _PosHomePageState extends State<PosHomePage> {
           onClear: _confirmClearCart,
           onCheckout: _checkout,
         ),
-      1 => _PrinterPage(settings: _settings, syncingMenu: _syncingMenu, onSave: _saveSettings, onTest: _testPrinter, onSyncMenu: _syncMenu),
+      1 => _PrinterPage(
+          settings: _settings,
+          syncingMenu: _syncingMenu,
+          onSave: _saveSettings,
+          onTest: _testPrinter,
+          onSyncMenu: _syncMenu),
       _ => _MenuAdminPage(
           categories: _categories,
           products: _products,
@@ -1014,8 +1171,14 @@ class _PosHomePageState extends State<PosHomePage> {
     return Scaffold(
       body: SafeArea(
         child: isNarrow
-            ? Column(children: [_TopNav(index: _pageIndex, onChanged: _setPage), Expanded(child: page)])
-            : Row(children: [_SideNav(index: _pageIndex, onChanged: _setPage), Expanded(child: page)]),
+            ? Column(children: [
+                _TopNav(index: _pageIndex, onChanged: _setPage),
+                Expanded(child: page)
+              ])
+            : Row(children: [
+                _SideNav(index: _pageIndex, onChanged: _setPage),
+                Expanded(child: page)
+              ]),
       ),
     );
   }
@@ -1040,7 +1203,8 @@ class _PosHomePageState extends State<PosHomePage> {
   }
 
   Future<void> _confirmClearCart() async {
-    final ok = await _confirm(title: '清空購物車', message: '確定清除目前已點商品？', action: '清空');
+    final ok =
+        await _confirm(title: '清空購物車', message: '確定清除目前已點商品？', action: '清空');
     if (ok) setState(_cart.clear);
   }
 
@@ -1084,7 +1248,8 @@ class _PosHomePageState extends State<PosHomePage> {
     setState(() => _syncingMenu = true);
     try {
       await _database.saveSettings(settings);
-      final count = await _database.syncMenuFromSheetUrl(_defaultMenuSheetCsvUrl);
+      final count =
+          await _database.syncMenuFromSheetUrl(_defaultMenuSheetCsvUrl);
       _cart.clear();
       await _load();
       _snack('菜單已同步：$count 個商品');
@@ -1107,7 +1272,9 @@ class _PosHomePageState extends State<PosHomePage> {
 
   Future<void> _testPrinter(AppSettings settings) async {
     try {
-      final socket = await Socket.connect(settings.printerIp, settings.printerPort, timeout: const Duration(seconds: 3));
+      final socket = await Socket.connect(
+          settings.printerIp, settings.printerPort,
+          timeout: const Duration(seconds: 3));
       await socket.close();
       _snack('連線成功');
     } catch (_) {
@@ -1116,15 +1283,14 @@ class _PosHomePageState extends State<PosHomePage> {
   }
 
   Future<String> _nextOrderNumber(DateTime now) async {
-    try {
-      return await _database.nextOrderNumberFromSheetUrl(_defaultMenuScriptUrl, now);
-    } catch (_) {
-      return _database.nextOrderNumber(now);
-    }
+    return _database.nextOrderNumber(now);
   }
 
   Future<void> _editCategory([Category? category]) async {
-    final name = await _textDialog(title: category == null ? '新增類別' : '修改類別', label: '類別名稱', initialValue: category?.name ?? '');
+    final name = await _textDialog(
+        title: category == null ? '新增類別' : '修改類別',
+        label: '類別名稱',
+        initialValue: category?.name ?? '');
     if (name == null || name.trim().isEmpty) return;
     if (category == null) {
       final newCategoryId = await _database.addCategory(name.trim());
@@ -1137,10 +1303,14 @@ class _PosHomePageState extends State<PosHomePage> {
   }
 
   Future<void> _deleteCategory(Category category) async {
-    final ok = await _confirm(title: '刪除類別', message: '刪除「${category.name}」後，類別內商品也會移除。', action: '刪除');
+    final ok = await _confirm(
+        title: '刪除類別',
+        message: '刪除「${category.name}」後，類別內商品也會移除。',
+        action: '刪除');
     if (!ok) return;
     await _database.deleteCategory(category);
-    _cart.removeWhere((productId, _) => !_products.any((product) => product.id == productId));
+    _cart.removeWhere(
+        (productId, _) => !_products.any((product) => product.id == productId));
     await _load();
     await _pushMenuIfConfigured();
   }
@@ -1156,9 +1326,15 @@ class _PosHomePageState extends State<PosHomePage> {
     );
     if (result == null) return;
     if (product == null) {
-      await _database.addProduct(name: result.name, price: result.price, categoryId: result.categoryId);
+      await _database.addProduct(
+          name: result.name,
+          price: result.price,
+          categoryId: result.categoryId);
     } else {
-      await _database.updateProduct(product, name: result.name, price: result.price, categoryId: result.categoryId);
+      await _database.updateProduct(product,
+          name: result.name,
+          price: result.price,
+          categoryId: result.categoryId);
     }
     _activeAdminCategoryId = result.categoryId;
     await _load();
@@ -1166,7 +1342,8 @@ class _PosHomePageState extends State<PosHomePage> {
   }
 
   Future<void> _deleteProduct(Product product) async {
-    final ok = await _confirm(title: '刪除商品', message: '確定刪除「${product.name}」？', action: '刪除');
+    final ok = await _confirm(
+        title: '刪除商品', message: '確定刪除「${product.name}」？', action: '刪除');
     if (!ok) return;
     await _database.deleteProduct(product);
     setState(() => _cart.remove(product.id));
@@ -1174,34 +1351,54 @@ class _PosHomePageState extends State<PosHomePage> {
     await _pushMenuIfConfigured();
   }
 
-  Future<String?> _textDialog({required String title, required String label, required String initialValue}) {
+  Future<String?> _textDialog(
+      {required String title,
+      required String label,
+      required String initialValue}) {
     final controller = TextEditingController(text: initialValue);
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_radius)),
         backgroundColor: _panel,
-        content: TextField(controller: controller, decoration: _fieldDecoration(label), autofocus: true),
+        content: TextField(
+            controller: controller,
+            decoration: _fieldDecoration(label),
+            autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text), style: _primaryButtonStyle(), child: const Text('儲存')),
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              style: _primaryButtonStyle(),
+              child: const Text('儲存')),
         ],
       ),
     );
   }
 
-  Future<bool> _confirm({required String title, required String message, required String action}) async {
+  Future<bool> _confirm(
+      {required String title,
+      required String message,
+      required String action}) async {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: Text(title),
             content: Text(message),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(_radius)),
             backgroundColor: _panel,
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), style: _primaryButtonStyle(), child: Text(action)),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('取消')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: _primaryButtonStyle(),
+                  child: Text(action)),
             ],
           ),
         ) ??
@@ -1237,16 +1434,21 @@ class _SideNav extends StatelessWidget {
       onDestinationSelected: onChanged,
       labelType: NavigationRailLabelType.all,
       backgroundColor: _rail,
-      leading: const Padding(padding: EdgeInsets.fromLTRB(12, 18, 12, 16), child: _BrandMark()),
+      leading: const Padding(
+          padding: EdgeInsets.fromLTRB(12, 18, 12, 16), child: _BrandMark()),
       selectedIconTheme: const IconThemeData(color: Color(0xff17231c)),
       unselectedIconTheme: const IconThemeData(color: Colors.white70),
       indicatorColor: _railActive,
-      selectedLabelTextStyle: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
-      unselectedLabelTextStyle: const TextStyle(color: Colors.white70, fontSize: 17, fontWeight: FontWeight.w700),
+      selectedLabelTextStyle: const TextStyle(
+          color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
+      unselectedLabelTextStyle: const TextStyle(
+          color: Colors.white70, fontSize: 17, fontWeight: FontWeight.w700),
       destinations: const [
-        NavigationRailDestination(icon: Icon(Icons.receipt_long), label: Text('點餐')),
+        NavigationRailDestination(
+            icon: Icon(Icons.receipt_long), label: Text('點餐')),
         NavigationRailDestination(icon: Icon(Icons.print), label: Text('出單機')),
-        NavigationRailDestination(icon: Icon(Icons.restaurant_menu), label: Text('商品')),
+        NavigationRailDestination(
+            icon: Icon(Icons.restaurant_menu), label: Text('商品')),
       ],
     );
   }
@@ -1269,11 +1471,26 @@ class _TopNav extends StatelessWidget {
           children: [
             const _BrandMark(horizontal: true),
             const SizedBox(width: 8),
-            Expanded(child: _TopNavButton(selected: index == 0, icon: Icons.receipt_long, label: '點餐', onTap: () => onChanged(0))),
+            Expanded(
+                child: _TopNavButton(
+                    selected: index == 0,
+                    icon: Icons.receipt_long,
+                    label: '點餐',
+                    onTap: () => onChanged(0))),
             const SizedBox(width: 8),
-            Expanded(child: _TopNavButton(selected: index == 1, icon: Icons.print, label: '出單機', onTap: () => onChanged(1))),
+            Expanded(
+                child: _TopNavButton(
+                    selected: index == 1,
+                    icon: Icons.print,
+                    label: '出單機',
+                    onTap: () => onChanged(1))),
             const SizedBox(width: 8),
-            Expanded(child: _TopNavButton(selected: index == 2, icon: Icons.restaurant_menu, label: '商品', onTap: () => onChanged(2))),
+            Expanded(
+                child: _TopNavButton(
+                    selected: index == 2,
+                    icon: Icons.restaurant_menu,
+                    label: '商品',
+                    onTap: () => onChanged(2))),
           ],
         ),
       ),
@@ -1292,10 +1509,14 @@ class _BrandMark extends StatelessWidget {
       width: 56,
       height: 40,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: _yellow, borderRadius: BorderRadius.circular(_radius)),
-      child: const Text('POS', style: TextStyle(color: Color(0xff1f1a12), fontWeight: FontWeight.w900)),
+      decoration: BoxDecoration(
+          color: _yellow, borderRadius: BorderRadius.circular(_radius)),
+      child: const Text('POS',
+          style:
+              TextStyle(color: Color(0xff1f1a12), fontWeight: FontWeight.w900)),
     );
-    final label = const Text('店內點餐', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800));
+    final label = const Text('店內點餐',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800));
     if (horizontal) {
       return Row(children: [mark, const SizedBox(width: 8), label]);
     }
@@ -1304,7 +1525,11 @@ class _BrandMark extends StatelessWidget {
 }
 
 class _TopNavButton extends StatelessWidget {
-  const _TopNavButton({required this.selected, required this.icon, required this.label, required this.onTap});
+  const _TopNavButton(
+      {required this.selected,
+      required this.icon,
+      required this.label,
+      required this.onTap});
 
   final bool selected;
   final IconData icon;
@@ -1321,9 +1546,11 @@ class _TopNavButton extends StatelessWidget {
         label: Text(label),
         style: FilledButton.styleFrom(
           backgroundColor: selected ? _railActive : Colors.white.withAlpha(20),
-          foregroundColor: selected ? const Color(0xff17231c) : const Color(0xffe9e3d8),
+          foregroundColor:
+              selected ? const Color(0xff17231c) : const Color(0xffe9e3d8),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_radius)),
         ),
       ),
     );
@@ -1363,7 +1590,9 @@ class _OrderPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleProducts = products.where((product) => product.categoryId == activeCategoryId).toList();
+    final visibleProducts = products
+        .where((product) => product.categoryId == activeCategoryId)
+        .toList();
     final isWide = MediaQuery.sizeOf(context).width >= 700;
     final columns = _normalizeProductColumns(settings.productColumns);
     final crossAxisCount = columns == 0 ? (isWide ? 4 : 2) : columns;
@@ -1389,8 +1618,12 @@ class _OrderPage extends StatelessWidget {
                   selectedColor: _green,
                   backgroundColor: _panel,
                   side: BorderSide(color: selected ? _green : _line),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
-                  labelStyle: TextStyle(color: selected ? Colors.white : _ink, fontSize: 18, fontWeight: FontWeight.w800),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(_radius)),
+                  labelStyle: TextStyle(
+                      color: selected ? Colors.white : _ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800),
                   onSelected: (_) => onCategorySelected(category.id),
                 );
               },
@@ -1421,7 +1654,10 @@ class _OrderPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         border: Border.all(color: const Color(0xffd6cfc4)),
                         borderRadius: BorderRadius.circular(_radius),
-                        boxShadow: const [BoxShadow(color: Color(0x0a000000), offset: Offset(0, 2))],
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Color(0x0a000000), offset: Offset(0, 2))
+                        ],
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1431,11 +1667,18 @@ class _OrderPage extends StatelessWidget {
                             product.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: _ink, fontSize: 21, height: 1.22, fontWeight: FontWeight.w800),
+                            style: const TextStyle(
+                                color: _ink,
+                                fontSize: 21,
+                                height: 1.22,
+                                fontWeight: FontWeight.w800),
                           ),
                           Text(
                             '\$${product.price}',
-                            style: const TextStyle(color: _greenDark, fontSize: 23, fontWeight: FontWeight.w900),
+                            style: const TextStyle(
+                                color: _greenDark,
+                                fontSize: 23,
+                                fontWeight: FontWeight.w900),
                           ),
                         ],
                       ),
@@ -1462,8 +1705,16 @@ class _OrderPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: isWide
-          ? Row(children: [Expanded(flex: 3, child: productPane), const SizedBox(width: 16), Expanded(flex: 2, child: cartPane)])
-          : Column(children: [Expanded(child: productPane), const SizedBox(height: 12), SizedBox(height: 310, child: cartPane)]),
+          ? Row(children: [
+              Expanded(flex: 3, child: productPane),
+              const SizedBox(width: 16),
+              Expanded(flex: 2, child: cartPane)
+            ])
+          : Column(children: [
+              Expanded(child: productPane),
+              const SizedBox(height: 12),
+              SizedBox(height: 310, child: cartPane)
+            ]),
     );
   }
 }
@@ -1505,13 +1756,24 @@ class _CartPane extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('購物車', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    Text('購物車',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
-                    Text('$count 項', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+                    Text('$count 項',
+                        style: const TextStyle(
+                            color: _muted, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
-              Text('\$$total', style: const TextStyle(color: _greenDark, fontSize: 36, height: 1, fontWeight: FontWeight.w900)),
+              Text('\$$total',
+                  style: const TextStyle(
+                      color: _greenDark,
+                      fontSize: 36,
+                      height: 1,
+                      fontWeight: FontWeight.w900)),
             ],
           ),
           const SizedBox(height: 10),
@@ -1519,8 +1781,12 @@ class _CartPane extends StatelessWidget {
             child: lines.isEmpty
                 ? Container(
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(border: Border.all(color: _line, style: BorderStyle.solid), borderRadius: BorderRadius.circular(_radius)),
-                    child: const Text('購物車尚無商品', style: TextStyle(color: _muted, fontSize: 18)),
+                    decoration: BoxDecoration(
+                        border:
+                            Border.all(color: _line, style: BorderStyle.solid),
+                        borderRadius: BorderRadius.circular(_radius)),
+                    child: const Text('購物車尚無商品',
+                        style: TextStyle(color: _muted, fontSize: 18)),
                   )
                 : ListView.separated(
                     itemCount: lines.length,
@@ -1529,8 +1795,11 @@ class _CartPane extends StatelessWidget {
                       final line = lines[index];
                       return Container(
                         constraints: const BoxConstraints(minHeight: 62),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(_radius)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                            color: _panel,
+                            borderRadius: BorderRadius.circular(_radius)),
                         child: Row(
                           children: [
                             Expanded(
@@ -1538,15 +1807,33 @@ class _CartPane extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text(line.product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                                  Text(line.product.name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800)),
                                   const SizedBox(height: 2),
-                                  Text('\$${line.product.price}', style: const TextStyle(color: _muted)),
+                                  Text('\$${line.product.price}',
+                                      style: const TextStyle(color: _muted)),
                                 ],
                               ),
                             ),
-                            _QuantityButton(icon: Icons.remove, onPressed: () => onQuantityChange(line.product, -1)),
-                            SizedBox(width: 42, child: Text('${line.quantity}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-                            _QuantityButton(icon: Icons.add, onPressed: () => onQuantityChange(line.product, 1)),
+                            _QuantityButton(
+                                icon: Icons.remove,
+                                onPressed: () =>
+                                    onQuantityChange(line.product, -1)),
+                            SizedBox(
+                                width: 42,
+                                child: Text('${line.quantity}',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800))),
+                            _QuantityButton(
+                                icon: Icons.add,
+                                onPressed: () =>
+                                    onQuantityChange(line.product, 1)),
                           ],
                         ),
                       );
@@ -1556,7 +1843,11 @@ class _CartPane extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: OutlinedButton(onPressed: lines.isEmpty ? null : onClear, style: _secondaryButtonStyle(foregroundColor: _red), child: const Text('清空'))),
+              Expanded(
+                  child: OutlinedButton(
+                      onPressed: lines.isEmpty ? null : onClear,
+                      style: _secondaryButtonStyle(foregroundColor: _red),
+                      child: const Text('清空'))),
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton(
@@ -1590,7 +1881,8 @@ class _QuantityButton extends StatelessWidget {
         style: IconButton.styleFrom(
           backgroundColor: _softButton,
           foregroundColor: _ink,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_radius)),
         ),
       ),
     );
@@ -1598,7 +1890,12 @@ class _QuantityButton extends StatelessWidget {
 }
 
 class _PrinterPage extends StatefulWidget {
-  const _PrinterPage({required this.settings, required this.syncingMenu, required this.onSave, required this.onTest, required this.onSyncMenu});
+  const _PrinterPage(
+      {required this.settings,
+      required this.syncingMenu,
+      required this.onSave,
+      required this.onTest,
+      required this.onSyncMenu});
 
   final AppSettings settings;
   final bool syncingMenu;
@@ -1614,6 +1911,7 @@ class _PrinterPageState extends State<_PrinterPage> {
   late final TextEditingController _ipController;
   late final TextEditingController _portController;
   late final TextEditingController _fontSizeController;
+  late final TextEditingController _lineSpacingController;
   late final TextEditingController _productColumnsController;
   late String _receiptFontFamily;
   late String _receiptPriceMode;
@@ -1623,12 +1921,20 @@ class _PrinterPageState extends State<_PrinterPage> {
   void initState() {
     super.initState();
     _ipController = TextEditingController(text: widget.settings.printerIp);
-    _portController = TextEditingController(text: widget.settings.printerPort.toString());
-    _fontSizeController = TextEditingController(text: widget.settings.receiptFontSize.toStringAsFixed(0));
-    _productColumnsController = TextEditingController(text: widget.settings.productColumns.toString());
-    _receiptFontFamily = _normalizeReceiptFontFamily(widget.settings.receiptFontFamily);
-    _receiptPriceMode = _normalizeReceiptPriceMode(widget.settings.receiptPriceMode);
-    _productButtonSize = _normalizeProductButtonSize(widget.settings.productButtonSize);
+    _portController =
+        TextEditingController(text: widget.settings.printerPort.toString());
+    _fontSizeController = TextEditingController(
+        text: widget.settings.receiptFontSize.toStringAsFixed(0));
+    _lineSpacingController = TextEditingController(
+        text: widget.settings.receiptLineSpacing.toStringAsFixed(0));
+    _productColumnsController =
+        TextEditingController(text: widget.settings.productColumns.toString());
+    _receiptFontFamily =
+        _normalizeReceiptFontFamily(widget.settings.receiptFontFamily);
+    _receiptPriceMode =
+        _normalizeReceiptPriceMode(widget.settings.receiptPriceMode);
+    _productButtonSize =
+        _normalizeProductButtonSize(widget.settings.productButtonSize);
   }
 
   @override
@@ -1636,6 +1942,7 @@ class _PrinterPageState extends State<_PrinterPage> {
     _ipController.dispose();
     _portController.dispose();
     _fontSizeController.dispose();
+    _lineSpacingController.dispose();
     _productColumnsController.dispose();
     super.dispose();
   }
@@ -1653,7 +1960,10 @@ class _PrinterPageState extends State<_PrinterPage> {
           decoration: _panelDecoration(),
           child: Column(
             children: [
-              TextField(controller: _ipController, style: const TextStyle(fontSize: 20), decoration: _fieldDecoration('出單機 IP')),
+              TextField(
+                  controller: _ipController,
+                  style: const TextStyle(fontSize: 20),
+                  decoration: _fieldDecoration('出單機 IP')),
               const SizedBox(height: 12),
               TextField(
                 controller: _portController,
@@ -1668,10 +1978,12 @@ class _PrinterPageState extends State<_PrinterPage> {
                 style: const TextStyle(fontSize: 20),
                 decoration: _fieldDecoration('出單字大小'),
               ),
-              const SizedBox(height: 6),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('建議 40-60，未填預設 52。', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _lineSpacingController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(fontSize: 20),
+                decoration: _fieldDecoration('出單上下間距'),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -1695,7 +2007,8 @@ class _PrinterPageState extends State<_PrinterPage> {
                 value: _receiptPriceMode,
                 decoration: _fieldDecoration('價格列印方式'),
                 items: _receiptPriceModeOptions
-                    .map((option) => DropdownMenuItem<String>(value: option.value, child: Text(option.label)))
+                    .map((option) => DropdownMenuItem<String>(
+                        value: option.value, child: Text(option.label)))
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;
@@ -1707,7 +2020,8 @@ class _PrinterPageState extends State<_PrinterPage> {
                 value: _productButtonSize,
                 decoration: _fieldDecoration('商品按鈕大小'),
                 items: _productButtonSizeOptions
-                    .map((option) => DropdownMenuItem<String>(value: option.value, child: Text(option.label)))
+                    .map((option) => DropdownMenuItem<String>(
+                        value: option.value, child: Text(option.label)))
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;
@@ -1721,29 +2035,38 @@ class _PrinterPageState extends State<_PrinterPage> {
                 style: const TextStyle(fontSize: 20),
                 decoration: _fieldDecoration('每列商品數量'),
               ),
-              const SizedBox(height: 6),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('填 0 為自動，建議手機 2、iPad mini 3、11 吋平板 4。', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-              ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: widget.syncingMenu ? null : () => widget.onSyncMenu(_settings()),
+                  onPressed: widget.syncingMenu
+                      ? null
+                      : () => widget.onSyncMenu(_settings()),
                   style: _secondaryButtonStyle(foregroundColor: _greenDark),
                   icon: widget.syncingMenu
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.sync),
-                  label: Text(widget.syncingMenu ? '同步中...' : '同步 Google Sheet 菜單'),
+                  label: Text(
+                      widget.syncingMenu ? '同步中...' : '同步 Google Sheet 菜單'),
                 ),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: OutlinedButton(onPressed: () => widget.onTest(_settings()), style: _secondaryButtonStyle(), child: const Text('測試連線'))),
+                  Expanded(
+                      child: OutlinedButton(
+                          onPressed: () => widget.onTest(_settings()),
+                          style: _secondaryButtonStyle(),
+                          child: const Text('測試連線'))),
                   const SizedBox(width: 12),
-                  Expanded(child: FilledButton(onPressed: () => widget.onSave(_settings()), style: _primaryButtonStyle(), child: const Text('儲存設定'))),
+                  Expanded(
+                      child: FilledButton(
+                          onPressed: () => widget.onSave(_settings()),
+                          style: _primaryButtonStyle(),
+                          child: const Text('儲存設定'))),
                 ],
               ),
             ],
@@ -1757,11 +2080,15 @@ class _PrinterPageState extends State<_PrinterPage> {
     return AppSettings(
       printerIp: _ipController.text.trim(),
       printerPort: int.tryParse(_portController.text.trim()) ?? 9100,
-      receiptFontSize: _normalizeReceiptFontSize(double.tryParse(_fontSizeController.text.trim())),
+      receiptFontSize: _normalizeReceiptFontSize(
+          double.tryParse(_fontSizeController.text.trim())),
+      receiptLineSpacing: _normalizeReceiptLineSpacing(
+          double.tryParse(_lineSpacingController.text.trim())),
       receiptFontFamily: _normalizeReceiptFontFamily(_receiptFontFamily),
       receiptPriceMode: _normalizeReceiptPriceMode(_receiptPriceMode),
       productButtonSize: _normalizeProductButtonSize(_productButtonSize),
-      productColumns: _normalizeProductColumns(int.tryParse(_productColumnsController.text.trim())),
+      productColumns: _normalizeProductColumns(
+          int.tryParse(_productColumnsController.text.trim())),
       menuSheetUrl: _defaultMenuSheetCsvUrl,
       menuScriptUrl: _defaultMenuScriptUrl,
     );
@@ -1796,10 +2123,13 @@ class _MenuAdminPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.sizeOf(context).width >= 700;
-    final selectedCategory = _firstWhereOrNull(categories, (category) => category.id == selectedCategoryId);
+    final selectedCategory = _firstWhereOrNull(
+        categories, (category) => category.id == selectedCategoryId);
     final visibleProducts = selectedCategory == null
         ? <Product>[]
-        : products.where((product) => product.categoryId == selectedCategory.id).toList();
+        : products
+            .where((product) => product.categoryId == selectedCategory.id)
+            .toList();
     final categoryPanel = _AdminPanel(
       title: '類別',
       onAdd: onAddCategory,
@@ -1810,13 +2140,17 @@ class _MenuAdminPage extends StatelessWidget {
               tileColor: Colors.white,
               selectedTileColor: const Color(0xffeef7f1),
               shape: RoundedRectangleBorder(
-                side: BorderSide(color: category.id == selectedCategoryId ? _green : _line),
+                side: BorderSide(
+                    color: category.id == selectedCategoryId ? _green : _line),
                 borderRadius: BorderRadius.circular(_radius),
               ),
               title: Text(category.name),
-              subtitle: Text('${products.where((product) => product.categoryId == category.id).length} 個商品'),
+              subtitle: Text(
+                  '${products.where((product) => product.categoryId == category.id).length} 個商品'),
               onTap: () => onSelectCategory(category.id),
-              trailing: _EditDeleteButtons(onEdit: () => onEditCategory(category), onDelete: () => onDeleteCategory(category)),
+              trailing: _EditDeleteButtons(
+                  onEdit: () => onEditCategory(category),
+                  onDelete: () => onDeleteCategory(category)),
             ),
           )
           .toList(),
@@ -1828,10 +2162,16 @@ class _MenuAdminPage extends StatelessWidget {
           .map(
             (product) => ListTile(
               tileColor: Colors.white,
-              shape: RoundedRectangleBorder(side: const BorderSide(color: _line), borderRadius: BorderRadius.circular(_radius)),
+              shape: RoundedRectangleBorder(
+                  side: const BorderSide(color: _line),
+                  borderRadius: BorderRadius.circular(_radius)),
               title: Text('${product.name} · \$${product.price}'),
-              subtitle: Text(_firstWhereOrNull(categories, (category) => category.id == product.categoryId)?.name ?? '未分類'),
-              trailing: _EditDeleteButtons(onEdit: () => onEditProduct(product), onDelete: () => onDeleteProduct(product)),
+              subtitle: Text(_firstWhereOrNull(categories,
+                      (category) => category.id == product.categoryId)?.name ??
+                  '未分類'),
+              trailing: _EditDeleteButtons(
+                  onEdit: () => onEditProduct(product),
+                  onDelete: () => onDeleteProduct(product)),
             ),
           )
           .toList(),
@@ -1846,8 +2186,16 @@ class _MenuAdminPage extends StatelessWidget {
           const SizedBox(height: 18),
           Expanded(
             child: isWide
-                ? Row(children: [SizedBox(width: 360, child: categoryPanel), const SizedBox(width: 18), Expanded(child: productPanel)])
-                : ListView(children: [SizedBox(height: 360, child: categoryPanel), const SizedBox(height: 18), SizedBox(height: 520, child: productPanel)]),
+                ? Row(children: [
+                    SizedBox(width: 360, child: categoryPanel),
+                    const SizedBox(width: 18),
+                    Expanded(child: productPanel)
+                  ])
+                : ListView(children: [
+                    SizedBox(height: 360, child: categoryPanel),
+                    const SizedBox(height: 18),
+                    SizedBox(height: 520, child: productPanel)
+                  ]),
           ),
         ],
       ),
@@ -1856,7 +2204,8 @@ class _MenuAdminPage extends StatelessWidget {
 }
 
 class _AdminPanel extends StatelessWidget {
-  const _AdminPanel({required this.title, required this.onAdd, required this.children});
+  const _AdminPanel(
+      {required this.title, required this.onAdd, required this.children});
 
   final String title;
   final VoidCallback onAdd;
@@ -1871,11 +2220,22 @@ class _AdminPanel extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: _line))),
+            decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: _line))),
             child: Row(
               children: [
-                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800))),
-                SizedBox(height: 42, child: FilledButton(onPressed: onAdd, style: _tinyButtonStyle(), child: const Text('新增'))),
+                Expanded(
+                    child: Text(title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w800))),
+                SizedBox(
+                    height: 42,
+                    child: FilledButton(
+                        onPressed: onAdd,
+                        style: _tinyButtonStyle(),
+                        child: const Text('新增'))),
               ],
             ),
           ),
@@ -1907,12 +2267,20 @@ class _EditDeleteButtons extends StatelessWidget {
         IconButton(
           onPressed: onEdit,
           icon: const Icon(Icons.edit),
-          style: IconButton.styleFrom(backgroundColor: const Color(0xffeee7db), foregroundColor: _ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius))),
+          style: IconButton.styleFrom(
+              backgroundColor: const Color(0xffeee7db),
+              foregroundColor: _ink,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(_radius))),
         ),
         IconButton(
           onPressed: onDelete,
           icon: const Icon(Icons.delete_outline),
-          style: IconButton.styleFrom(backgroundColor: _redSoft, foregroundColor: _red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius))),
+          style: IconButton.styleFrom(
+              backgroundColor: _redSoft,
+              foregroundColor: _red,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(_radius))),
         ),
       ],
     );
@@ -1920,7 +2288,10 @@ class _EditDeleteButtons extends StatelessWidget {
 }
 
 class _ProductDialog extends StatefulWidget {
-  const _ProductDialog({required this.categories, required this.product, required this.activeCategoryId});
+  const _ProductDialog(
+      {required this.categories,
+      required this.product,
+      required this.activeCategoryId});
 
   final List<Category> categories;
   final Product? product;
@@ -1939,8 +2310,11 @@ class _ProductDialogState extends State<_ProductDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.product?.name ?? '');
-    _priceController = TextEditingController(text: widget.product?.price.toString() ?? '');
-    _categoryId = widget.product?.categoryId ?? widget.activeCategoryId ?? widget.categories.first.id;
+    _priceController =
+        TextEditingController(text: widget.product?.price.toString() ?? '');
+    _categoryId = widget.product?.categoryId ??
+        widget.activeCategoryId ??
+        widget.categories.first.id;
   }
 
   @override
@@ -1954,29 +2328,43 @@ class _ProductDialogState extends State<_ProductDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.product == null ? '新增商品' : '修改商品'),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
       backgroundColor: _panel,
       content: SizedBox(
         width: 360,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _nameController, decoration: _fieldDecoration('商品名稱')),
+            TextField(
+                controller: _nameController,
+                decoration: _fieldDecoration('商品名稱')),
             const SizedBox(height: 12),
-            TextField(controller: _priceController, keyboardType: TextInputType.number, decoration: _fieldDecoration('價格')),
+            TextField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: _fieldDecoration('價格')),
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _categoryId,
               decoration: _fieldDecoration('所屬類別'),
-              items: widget.categories.map((category) => DropdownMenuItem(value: category.id, child: Text(category.name))).toList(),
-              onChanged: (value) => setState(() => _categoryId = value ?? _categoryId),
+              items: widget.categories
+                  .map((category) => DropdownMenuItem(
+                      value: category.id, child: Text(category.name)))
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => _categoryId = value ?? _categoryId),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-        FilledButton(onPressed: _submit, style: _primaryButtonStyle(), child: const Text('儲存')),
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        FilledButton(
+            onPressed: _submit,
+            style: _primaryButtonStyle(),
+            child: const Text('儲存')),
       ],
     );
   }
@@ -1985,12 +2373,14 @@ class _ProductDialogState extends State<_ProductDialog> {
     final name = _nameController.text.trim();
     final price = int.tryParse(_priceController.text.trim());
     if (name.isEmpty || price == null || price < 0) return;
-    Navigator.pop(context, _ProductEditResult(name: name, price: price, categoryId: _categoryId));
+    Navigator.pop(context,
+        _ProductEditResult(name: name, price: price, categoryId: _categoryId));
   }
 }
 
 class _ProductEditResult {
-  _ProductEditResult({required this.name, required this.price, required this.categoryId});
+  _ProductEditResult(
+      {required this.name, required this.price, required this.categoryId});
 
   final String name;
   final int price;
@@ -2008,7 +2398,11 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text(title,
+            style: Theme.of(context)
+                .textTheme
+                .headlineMedium
+                ?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text(subtitle, style: Theme.of(context).textTheme.bodyLarge),
       ],
