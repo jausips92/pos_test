@@ -22,6 +22,7 @@ const _railActive = Color(0xfff8f1df);
 const _cartBg = Color(0xffebe4d9);
 const _softButton = Color(0xffe7e0d4);
 const _radius = 8.0;
+const _tabletWideBreakpoint = 700.0;
 const _defaultMenuSheetCsvUrl =
     'https://docs.google.com/spreadsheets/d/1Ku0jeMB1VOI5Uryeqt5dgghAQbOccMdJyPLtSpxnJAU/export?format=csv&gid=0';
 const _defaultMenuScriptUrl =
@@ -44,6 +45,19 @@ const _productButtonSizeOptions =
   (label: '緊湊', value: 'compact', ratio: 1.55),
   (label: '標準', value: 'standard', ratio: 1.30),
   (label: '大按鈕', value: 'large', ratio: 1.08),
+];
+const _defaultProductButtonColorMode = 'plain';
+const _productButtonColorModeOptions = <({String label, String value})>[
+  (label: '統一淺色', value: 'plain'),
+  (label: '依類別分色', value: 'category'),
+  (label: '主色強調', value: 'accent'),
+];
+const _defaultThemeColor = 'green';
+const _themeColorOptions = <({String label, String value})>[
+  (label: '湖綠', value: 'green'),
+  (label: '深藍', value: 'blue'),
+  (label: '暖橘', value: 'orange'),
+  (label: '黑金', value: 'dark'),
 ];
 
 ButtonStyle _primaryButtonStyle() {
@@ -105,6 +119,78 @@ BoxDecoration _panelDecoration() {
       BoxShadow(color: Color(0x1a27221a), blurRadius: 30, offset: Offset(0, 10))
     ],
   );
+}
+
+class _VisualPalette {
+  const _VisualPalette({
+    required this.primary,
+    required this.primaryDark,
+    required this.rail,
+    required this.railActive,
+    required this.cartBg,
+    required this.productAccent,
+  });
+
+  final Color primary;
+  final Color primaryDark;
+  final Color rail;
+  final Color railActive;
+  final Color cartBg;
+  final Color productAccent;
+}
+
+_VisualPalette _paletteFor(String value) {
+  switch (_normalizeThemeColor(value)) {
+    case 'blue':
+      return const _VisualPalette(
+        primary: Color(0xff2f5f9f),
+        primaryDark: Color(0xff1f3f6d),
+        rail: Color(0xff1f2633),
+        railActive: Color(0xffe7efff),
+        cartBg: Color(0xffe8edf7),
+        productAccent: Color(0xffdbe8ff),
+      );
+    case 'orange':
+      return const _VisualPalette(
+        primary: Color(0xffb96022),
+        primaryDark: Color(0xff743812),
+        rail: Color(0xff30251d),
+        railActive: Color(0xffffead7),
+        cartBg: Color(0xfff1e4d8),
+        productAccent: Color(0xffffead7),
+      );
+    case 'dark':
+      return const _VisualPalette(
+        primary: Color(0xffd99b32),
+        primaryDark: Color(0xff7a5414),
+        rail: Color(0xff161513),
+        railActive: Color(0xfff6e4b7),
+        cartBg: Color(0xffe4dfd2),
+        productAccent: Color(0xfff6e4b7),
+      );
+    case 'green':
+    default:
+      return const _VisualPalette(
+        primary: _green,
+        primaryDark: _greenDark,
+        rail: _rail,
+        railActive: _railActive,
+        cartBg: _cartBg,
+        productAccent: Color(0xffe6f3ea),
+      );
+  }
+}
+
+Color _categoryColor(int index) {
+  const colors = [
+    Color(0xffe8f3ec),
+    Color(0xffffefd9),
+    Color(0xffe7efff),
+    Color(0xffffe5e1),
+    Color(0xffeee8ff),
+    Color(0xffe8f5f5),
+  ];
+  return colors[index % colors.length];
 }
 
 void main() {
@@ -189,6 +275,14 @@ class AppSettings {
     required this.receiptPriceMode,
     required this.productButtonSize,
     required this.productColumns,
+    required this.productNameFontSize,
+    required this.productPriceFontSize,
+    required this.productButtonGap,
+    required this.showProductPrice,
+    required this.productButtonColorMode,
+    required this.cartFontSize,
+    required this.cartSize,
+    required this.themeColor,
     required this.menuSheetUrl,
     required this.menuScriptUrl,
   });
@@ -201,6 +295,14 @@ class AppSettings {
   final String receiptPriceMode;
   final String productButtonSize;
   final int productColumns;
+  final double productNameFontSize;
+  final double productPriceFontSize;
+  final double productButtonGap;
+  final bool showProductPrice;
+  final String productButtonColorMode;
+  final double cartFontSize;
+  final double cartSize;
+  final String themeColor;
   final String menuSheetUrl;
   final String menuScriptUrl;
 }
@@ -255,6 +357,51 @@ double _normalizeReceiptFontSize(double? value) {
 double _normalizeReceiptLineSpacing(double? value) {
   final spacing = value ?? 12;
   return spacing >= 0 ? spacing : 12;
+}
+
+double _normalizeProductNameFontSize(double? value) {
+  final size = value ?? 21;
+  return size > 0 ? size : 21;
+}
+
+double _normalizeProductPriceFontSize(double? value) {
+  final size = value ?? 23;
+  return size > 0 ? size : 23;
+}
+
+double _normalizeProductButtonGap(double? value) {
+  final gap = value ?? 12;
+  return gap >= 0 ? gap : 12;
+}
+
+double _normalizeCartFontSize(double? value) {
+  final size = value ?? 18;
+  return size > 0 ? size : 18;
+}
+
+double _normalizeCartSize(double? value) {
+  final size = value ?? 1;
+  if (size < 0.7) return 0.7;
+  if (size > 1.6) return 1.6;
+  return size;
+}
+
+String _normalizeProductButtonColorMode(String? value) => _normalizeOption(
+    value, _productButtonColorModeOptions, _defaultProductButtonColorMode);
+
+String _normalizeThemeColor(String? value) =>
+    _normalizeOption(value, _themeColorOptions, _defaultThemeColor);
+
+bool _parseBoolSetting(String? value, {required bool fallback}) {
+  if (value == null) return fallback;
+  final normalized = value.trim().toLowerCase();
+  if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+    return true;
+  }
+  if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+    return false;
+  }
+  return fallback;
 }
 
 int _columnIndex(List<String> header, List<String> aliases) {
@@ -393,6 +540,20 @@ class PosDatabase {
     await db.insert('settings',
         {'key': 'product_button_size', 'value': _defaultProductButtonSize});
     await db.insert('settings', {'key': 'product_columns', 'value': '0'});
+    await db
+        .insert('settings', {'key': 'product_name_font_size', 'value': '21'});
+    await db
+        .insert('settings', {'key': 'product_price_font_size', 'value': '23'});
+    await db.insert('settings', {'key': 'product_button_gap', 'value': '12'});
+    await db.insert('settings', {'key': 'show_product_price', 'value': 'true'});
+    await db.insert('settings', {
+      'key': 'product_button_color_mode',
+      'value': _defaultProductButtonColorMode
+    });
+    await db.insert('settings', {'key': 'cart_font_size', 'value': '18'});
+    await db.insert('settings', {'key': 'cart_size', 'value': '1'});
+    await db.insert(
+        'settings', {'key': 'theme_color', 'value': _defaultThemeColor});
     await db.insert('settings',
         {'key': 'menu_sheet_url', 'value': _defaultMenuSheetCsvUrl});
     await db.insert(
@@ -479,6 +640,20 @@ class PosDatabase {
           _normalizeProductButtonSize(map['product_button_size']),
       productColumns:
           _normalizeProductColumns(int.tryParse(map['product_columns'] ?? '')),
+      productNameFontSize: _normalizeProductNameFontSize(
+          double.tryParse(map['product_name_font_size'] ?? '')),
+      productPriceFontSize: _normalizeProductPriceFontSize(
+          double.tryParse(map['product_price_font_size'] ?? '')),
+      productButtonGap: _normalizeProductButtonGap(
+          double.tryParse(map['product_button_gap'] ?? '')),
+      showProductPrice:
+          _parseBoolSetting(map['show_product_price'], fallback: true),
+      productButtonColorMode:
+          _normalizeProductButtonColorMode(map['product_button_color_mode']),
+      cartFontSize:
+          _normalizeCartFontSize(double.tryParse(map['cart_font_size'] ?? '')),
+      cartSize: _normalizeCartSize(double.tryParse(map['cart_size'] ?? '')),
+      themeColor: _normalizeThemeColor(map['theme_color']),
       menuSheetUrl: _defaultMenuSheetCsvUrl,
       menuScriptUrl: _defaultMenuScriptUrl,
     );
@@ -544,6 +719,68 @@ class PosDatabase {
     );
     await db.insert(
       'settings',
+      {
+        'key': 'product_name_font_size',
+        'value': settings.productNameFontSize.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'product_price_font_size',
+        'value': settings.productPriceFontSize.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'product_button_gap',
+        'value': settings.productButtonGap.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'show_product_price',
+        'value': settings.showProductPrice.toString()
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'product_button_color_mode',
+        'value':
+            _normalizeProductButtonColorMode(settings.productButtonColorMode)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'cart_font_size',
+        'value': settings.cartFontSize.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {'key': 'cart_size', 'value': settings.cartSize.toStringAsFixed(2)},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'theme_color',
+        'value': _normalizeThemeColor(settings.themeColor)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
       {'key': 'menu_sheet_url', 'value': settings.menuSheetUrl.trim()},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -581,22 +818,22 @@ class PosDatabase {
       final nameIndex =
           _columnIndex(header, const ['品項', '商品', '商品名稱', 'name', 'item']);
       final priceIndex = _columnIndex(header, const ['價格', '單價', 'price']);
-      if (categoryIndex == -1 || nameIndex == -1 || priceIndex == -1) {
-        throw const FormatException('Google Sheet 欄位需包含：分類、品項、價格');
+      if (categoryIndex == -1 || nameIndex == -1) {
+        throw const FormatException('Google Sheet 欄位需包含：分類、品項');
       }
 
       final parsedRows = <({String category, String name, int price})>[];
       for (final row in rows.skip(1)) {
         if (row.every((cell) => cell.trim().isEmpty)) continue;
-        if (row.length <= categoryIndex ||
-            row.length <= nameIndex ||
-            row.length <= priceIndex) continue;
+        if (row.length <= categoryIndex || row.length <= nameIndex) continue;
 
         final category = row[categoryIndex].trim();
         final name = row[nameIndex].trim();
-        final priceText = row[priceIndex].trim().replaceAll(',', '');
-        final price = int.tryParse(priceText);
-        if (category.isEmpty || name.isEmpty || price == null) continue;
+        final priceText = priceIndex == -1 || row.length <= priceIndex
+            ? ''
+            : row[priceIndex].trim().replaceAll(',', '');
+        final price = int.tryParse(priceText) ?? 0;
+        if (category.isEmpty || name.isEmpty) continue;
         parsedRows.add((category: category, name: name, price: price));
       }
       if (parsedRows.isEmpty)
@@ -1053,6 +1290,14 @@ class _PosHomePageState extends State<PosHomePage> {
     receiptPriceMode: _defaultReceiptPriceMode,
     productButtonSize: _defaultProductButtonSize,
     productColumns: 0,
+    productNameFontSize: 21,
+    productPriceFontSize: 23,
+    productButtonGap: 12,
+    showProductPrice: true,
+    productButtonColorMode: _defaultProductButtonColorMode,
+    cartFontSize: 18,
+    cartSize: 1,
+    themeColor: _defaultThemeColor,
     menuSheetUrl: _defaultMenuSheetCsvUrl,
     menuScriptUrl: _defaultMenuScriptUrl,
   );
@@ -1131,7 +1376,7 @@ class _PosHomePageState extends State<PosHomePage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final isNarrow = MediaQuery.sizeOf(context).width < 700;
+    final isNarrow = MediaQuery.sizeOf(context).width < _tabletWideBreakpoint;
     final page = switch (_pageIndex) {
       0 => _OrderPage(
           categories: _categories,
@@ -1148,13 +1393,7 @@ class _PosHomePageState extends State<PosHomePage> {
           onClear: _confirmClearCart,
           onCheckout: _checkout,
         ),
-      1 => _PrinterPage(
-          settings: _settings,
-          syncingMenu: _syncingMenu,
-          onSave: _saveSettings,
-          onTest: _testPrinter,
-          onSyncMenu: _syncMenu),
-      _ => _MenuAdminPage(
+      1 => _MenuAdminPage(
           categories: _categories,
           products: _products,
           selectedCategoryId: _activeAdminCategoryId,
@@ -1166,17 +1405,29 @@ class _PosHomePageState extends State<PosHomePage> {
           onEditProduct: _editProduct,
           onDeleteProduct: _deleteProduct,
         ),
+      _ => _SettingsPage(
+          settings: _settings,
+          syncingMenu: _syncingMenu,
+          onSave: _saveSettings,
+          onTest: _testPrinter,
+          onSyncMenu: _syncMenu),
     };
 
     return Scaffold(
       body: SafeArea(
         child: isNarrow
             ? Column(children: [
-                _TopNav(index: _pageIndex, onChanged: _setPage),
+                _TopNav(
+                    index: _pageIndex,
+                    settings: _settings,
+                    onChanged: _setPage),
                 Expanded(child: page)
               ])
             : Row(children: [
-                _SideNav(index: _pageIndex, onChanged: _setPage),
+                _SideNav(
+                    index: _pageIndex,
+                    settings: _settings,
+                    onChanged: _setPage),
                 Expanded(child: page)
               ]),
       ),
@@ -1239,7 +1490,7 @@ class _PosHomePageState extends State<PosHomePage> {
   Future<void> _saveSettings(AppSettings settings) async {
     await _database.saveSettings(settings);
     await _load();
-    _snack('出單機設定已儲存');
+    _snack('設定已儲存');
   }
 
   Future<void> _syncMenu(AppSettings settings) async {
@@ -1421,24 +1672,27 @@ class _PosHomePageState extends State<PosHomePage> {
 }
 
 class _SideNav extends StatelessWidget {
-  const _SideNav({required this.index, required this.onChanged});
+  const _SideNav(
+      {required this.index, required this.settings, required this.onChanged});
 
   final int index;
+  final AppSettings settings;
   final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final palette = _paletteFor(settings.themeColor);
     return NavigationRail(
       minWidth: 136,
       selectedIndex: index,
       onDestinationSelected: onChanged,
       labelType: NavigationRailLabelType.all,
-      backgroundColor: _rail,
+      backgroundColor: palette.rail,
       leading: const Padding(
           padding: EdgeInsets.fromLTRB(12, 18, 12, 16), child: _BrandMark()),
       selectedIconTheme: const IconThemeData(color: Color(0xff17231c)),
       unselectedIconTheme: const IconThemeData(color: Colors.white70),
-      indicatorColor: _railActive,
+      indicatorColor: palette.railActive,
       selectedLabelTextStyle: const TextStyle(
           color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
       unselectedLabelTextStyle: const TextStyle(
@@ -1446,24 +1700,27 @@ class _SideNav extends StatelessWidget {
       destinations: const [
         NavigationRailDestination(
             icon: Icon(Icons.receipt_long), label: Text('點餐')),
-        NavigationRailDestination(icon: Icon(Icons.print), label: Text('出單機')),
         NavigationRailDestination(
             icon: Icon(Icons.restaurant_menu), label: Text('商品')),
+        NavigationRailDestination(icon: Icon(Icons.tune), label: Text('設定')),
       ],
     );
   }
 }
 
 class _TopNav extends StatelessWidget {
-  const _TopNav({required this.index, required this.onChanged});
+  const _TopNav(
+      {required this.index, required this.settings, required this.onChanged});
 
   final int index;
+  final AppSettings settings;
   final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final palette = _paletteFor(settings.themeColor);
     return Container(
-      color: _rail,
+      color: palette.rail,
       padding: const EdgeInsets.all(10),
       child: SafeArea(
         bottom: false,
@@ -1475,21 +1732,24 @@ class _TopNav extends StatelessWidget {
                 child: _TopNavButton(
                     selected: index == 0,
                     icon: Icons.receipt_long,
+                    palette: palette,
                     label: '點餐',
                     onTap: () => onChanged(0))),
             const SizedBox(width: 8),
             Expanded(
                 child: _TopNavButton(
                     selected: index == 1,
-                    icon: Icons.print,
-                    label: '出單機',
+                    icon: Icons.restaurant_menu,
+                    palette: palette,
+                    label: '商品',
                     onTap: () => onChanged(1))),
             const SizedBox(width: 8),
             Expanded(
                 child: _TopNavButton(
                     selected: index == 2,
-                    icon: Icons.restaurant_menu,
-                    label: '商品',
+                    icon: Icons.tune,
+                    palette: palette,
+                    label: '設定',
                     onTap: () => onChanged(2))),
           ],
         ),
@@ -1528,11 +1788,13 @@ class _TopNavButton extends StatelessWidget {
   const _TopNavButton(
       {required this.selected,
       required this.icon,
+      required this.palette,
       required this.label,
       required this.onTap});
 
   final bool selected;
   final IconData icon;
+  final _VisualPalette palette;
   final String label;
   final VoidCallback onTap;
 
@@ -1545,7 +1807,8 @@ class _TopNavButton extends StatelessWidget {
         icon: Icon(icon, size: 20),
         label: Text(label),
         style: FilledButton.styleFrom(
-          backgroundColor: selected ? _railActive : Colors.white.withAlpha(20),
+          backgroundColor:
+              selected ? palette.railActive : Colors.white.withAlpha(20),
           foregroundColor:
               selected ? const Color(0xff17231c) : const Color(0xffe9e3d8),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
@@ -1593,10 +1856,19 @@ class _OrderPage extends StatelessWidget {
     final visibleProducts = products
         .where((product) => product.categoryId == activeCategoryId)
         .toList();
-    final isWide = MediaQuery.sizeOf(context).width >= 700;
+    final isWide = MediaQuery.sizeOf(context).width >= _tabletWideBreakpoint;
     final columns = _normalizeProductColumns(settings.productColumns);
     final crossAxisCount = columns == 0 ? (isWide ? 4 : 2) : columns;
     final productRatio = _productButtonRatio(settings.productButtonSize);
+    final productNameFontSize =
+        _normalizeProductNameFontSize(settings.productNameFontSize);
+    final productPriceFontSize =
+        _normalizeProductPriceFontSize(settings.productPriceFontSize);
+    final productGap = _normalizeProductButtonGap(settings.productButtonGap);
+    final productColorMode =
+        _normalizeProductButtonColorMode(settings.productButtonColorMode);
+    final palette = _paletteFor(settings.themeColor);
+    final showProductPrice = settings.showProductPrice;
 
     final productPane = Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
@@ -1615,9 +1887,9 @@ class _OrderPage extends StatelessWidget {
                 return ChoiceChip(
                   label: Text(category.name),
                   selected: selected,
-                  selectedColor: _green,
+                  selectedColor: palette.primary,
                   backgroundColor: _panel,
-                  side: BorderSide(color: selected ? _green : _line),
+                  side: BorderSide(color: selected ? palette.primary : _line),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(_radius)),
                   labelStyle: TextStyle(
@@ -1638,13 +1910,21 @@ class _OrderPage extends StatelessWidget {
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
                 childAspectRatio: productRatio,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+                crossAxisSpacing: productGap,
+                mainAxisSpacing: productGap,
               ),
               itemBuilder: (context, index) {
                 final product = visibleProducts[index];
+                final categoryIndex = categories.indexWhere(
+                    (category) => category.id == product.categoryId);
+                final productColor = switch (productColorMode) {
+                  'category' =>
+                    _categoryColor(categoryIndex < 0 ? index : categoryIndex),
+                  'accent' => palette.productAccent,
+                  _ => _panel,
+                };
                 return Material(
-                  color: _panel,
+                  color: productColor,
                   borderRadius: BorderRadius.circular(_radius),
                   child: InkWell(
                     onTap: () => onProductTap(product),
@@ -1667,19 +1947,20 @@ class _OrderPage extends StatelessWidget {
                             product.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: _ink,
-                                fontSize: 21,
+                                fontSize: productNameFontSize,
                                 height: 1.22,
                                 fontWeight: FontWeight.w800),
                           ),
-                          Text(
-                            '\$${product.price}',
-                            style: const TextStyle(
-                                color: _greenDark,
-                                fontSize: 23,
-                                fontWeight: FontWeight.w900),
-                          ),
+                          if (showProductPrice)
+                            Text(
+                              '\$${product.price}',
+                              style: TextStyle(
+                                  color: palette.primaryDark,
+                                  fontSize: productPriceFontSize,
+                                  fontWeight: FontWeight.w900),
+                            ),
                         ],
                       ),
                     ),
@@ -1696,6 +1977,7 @@ class _OrderPage extends StatelessWidget {
       lines: cartLines,
       count: cartCount,
       total: cartTotal,
+      settings: settings,
       checkingOut: checkingOut,
       onQuantityChange: onQuantityChange,
       onClear: onClear,
@@ -1708,12 +1990,16 @@ class _OrderPage extends StatelessWidget {
           ? Row(children: [
               Expanded(flex: 3, child: productPane),
               const SizedBox(width: 16),
-              Expanded(flex: 2, child: cartPane)
+              Expanded(
+                  flex: (_normalizeCartSize(settings.cartSize) * 2).round(),
+                  child: cartPane)
             ])
           : Column(children: [
               Expanded(child: productPane),
               const SizedBox(height: 12),
-              SizedBox(height: 310, child: cartPane)
+              SizedBox(
+                  height: 310 * _normalizeCartSize(settings.cartSize),
+                  child: cartPane)
             ]),
     );
   }
@@ -1724,6 +2010,7 @@ class _CartPane extends StatelessWidget {
     required this.lines,
     required this.count,
     required this.total,
+    required this.settings,
     required this.checkingOut,
     required this.onQuantityChange,
     required this.onClear,
@@ -1733,6 +2020,7 @@ class _CartPane extends StatelessWidget {
   final List<CartLine> lines;
   final int count;
   final int total;
+  final AppSettings settings;
   final bool checkingOut;
   final void Function(Product product, int delta) onQuantityChange;
   final VoidCallback onClear;
@@ -1740,10 +2028,12 @@ class _CartPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cartFontSize = _normalizeCartFontSize(settings.cartFontSize);
+    final palette = _paletteFor(settings.themeColor);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       decoration: BoxDecoration(
-        color: _cartBg,
+        color: palette.cartBg,
         border: Border.all(color: _line),
         borderRadius: BorderRadius.circular(_radius),
       ),
@@ -1769,8 +2059,8 @@ class _CartPane extends StatelessWidget {
                 ),
               ),
               Text('\$$total',
-                  style: const TextStyle(
-                      color: _greenDark,
+                  style: TextStyle(
+                      color: palette.primaryDark,
                       fontSize: 36,
                       height: 1,
                       fontWeight: FontWeight.w900)),
@@ -1810,12 +2100,14 @@ class _CartPane extends StatelessWidget {
                                   Text(line.product.name,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontSize: 18,
+                                      style: TextStyle(
+                                          fontSize: cartFontSize,
                                           fontWeight: FontWeight.w800)),
                                   const SizedBox(height: 2),
                                   Text('\$${line.product.price}',
-                                      style: const TextStyle(color: _muted)),
+                                      style: TextStyle(
+                                          color: _muted,
+                                          fontSize: cartFontSize * 0.85)),
                                 ],
                               ),
                             ),
@@ -1827,8 +2119,8 @@ class _CartPane extends StatelessWidget {
                                 width: 42,
                                 child: Text('${line.quantity}',
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        fontSize: 18,
+                                    style: TextStyle(
+                                        fontSize: cartFontSize,
                                         fontWeight: FontWeight.w800))),
                             _QuantityButton(
                                 icon: Icons.add,
@@ -1889,8 +2181,8 @@ class _QuantityButton extends StatelessWidget {
   }
 }
 
-class _PrinterPage extends StatefulWidget {
-  const _PrinterPage(
+class _SettingsPage extends StatefulWidget {
+  const _SettingsPage(
       {required this.settings,
       required this.syncingMenu,
       required this.onSave,
@@ -1904,18 +2196,26 @@ class _PrinterPage extends StatefulWidget {
   final ValueChanged<AppSettings> onSyncMenu;
 
   @override
-  State<_PrinterPage> createState() => _PrinterPageState();
+  State<_SettingsPage> createState() => _SettingsPageState();
 }
 
-class _PrinterPageState extends State<_PrinterPage> {
+class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _ipController;
   late final TextEditingController _portController;
   late final TextEditingController _fontSizeController;
   late final TextEditingController _lineSpacingController;
   late final TextEditingController _productColumnsController;
+  late final TextEditingController _productNameFontSizeController;
+  late final TextEditingController _productPriceFontSizeController;
+  late final TextEditingController _productButtonGapController;
+  late final TextEditingController _cartFontSizeController;
+  late final TextEditingController _cartSizeController;
   late String _receiptFontFamily;
   late String _receiptPriceMode;
   late String _productButtonSize;
+  late String _productButtonColorMode;
+  late String _themeColor;
+  late bool _showProductPrice;
 
   @override
   void initState() {
@@ -1929,12 +2229,26 @@ class _PrinterPageState extends State<_PrinterPage> {
         text: widget.settings.receiptLineSpacing.toStringAsFixed(0));
     _productColumnsController =
         TextEditingController(text: widget.settings.productColumns.toString());
+    _productNameFontSizeController = TextEditingController(
+        text: widget.settings.productNameFontSize.toStringAsFixed(0));
+    _productPriceFontSizeController = TextEditingController(
+        text: widget.settings.productPriceFontSize.toStringAsFixed(0));
+    _productButtonGapController = TextEditingController(
+        text: widget.settings.productButtonGap.toStringAsFixed(0));
+    _cartFontSizeController = TextEditingController(
+        text: widget.settings.cartFontSize.toStringAsFixed(0));
+    _cartSizeController = TextEditingController(
+        text: widget.settings.cartSize.toStringAsFixed(2));
     _receiptFontFamily =
         _normalizeReceiptFontFamily(widget.settings.receiptFontFamily);
     _receiptPriceMode =
         _normalizeReceiptPriceMode(widget.settings.receiptPriceMode);
     _productButtonSize =
         _normalizeProductButtonSize(widget.settings.productButtonSize);
+    _productButtonColorMode = _normalizeProductButtonColorMode(
+        widget.settings.productButtonColorMode);
+    _themeColor = _normalizeThemeColor(widget.settings.themeColor);
+    _showProductPrice = widget.settings.showProductPrice;
   }
 
   @override
@@ -1944,134 +2258,223 @@ class _PrinterPageState extends State<_PrinterPage> {
     _fontSizeController.dispose();
     _lineSpacingController.dispose();
     _productColumnsController.dispose();
+    _productNameFontSizeController.dispose();
+    _productPriceFontSizeController.dispose();
+    _productButtonGapController.dispose();
+    _cartFontSizeController.dispose();
+    _cartSizeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Widget section(String title, List<Widget> children) {
+      return Container(
+        width: 760,
+        padding: const EdgeInsets.all(22),
+        decoration: _panelDecoration(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      );
+    }
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const _Header(title: '出單機設定', subtitle: '單台 iPad 直接連區網出單機'),
+        const _Header(title: '設定', subtitle: '調整列印、點餐畫面與顏色'),
         const SizedBox(height: 18),
-        Container(
-          width: 520,
-          padding: const EdgeInsets.all(22),
-          decoration: _panelDecoration(),
-          child: Column(
+        section('出單機', [
+          TextField(
+              controller: _ipController,
+              style: const TextStyle(fontSize: 20),
+              decoration: _fieldDecoration('出單機 IP')),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _portController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('Port'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _fontSizeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('出單字大小'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _lineSpacingController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('出單上下間距'),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _receiptFontFamily,
+            decoration: _fieldDecoration('出單字型'),
+            items: _receiptFontOptions
+                .map((option) => DropdownMenuItem<String>(
+                    value: option.family, child: Text(option.label)))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _receiptFontFamily = value);
+            },
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _receiptPriceMode,
+            decoration: _fieldDecoration('價格列印方式'),
+            items: _receiptPriceModeOptions
+                .map((option) => DropdownMenuItem<String>(
+                    value: option.value, child: Text(option.label)))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _receiptPriceMode = value);
+            },
+          ),
+        ]),
+        const SizedBox(height: 18),
+        section('商品按鈕', [
+          DropdownButtonFormField<String>(
+            value: _productButtonSize,
+            decoration: _fieldDecoration('商品按鈕大小'),
+            items: _productButtonSizeOptions
+                .map((option) => DropdownMenuItem<String>(
+                    value: option.value, child: Text(option.label)))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _productButtonSize = value);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _productButtonGapController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('商品按鈕間距'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _productNameFontSizeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('商品名稱字大小'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _productPriceFontSizeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('商品金額字大小'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _productColumnsController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('每列商品數量'),
+          ),
+          const SizedBox(height: 12),
+          SwitchListTile(
+            value: _showProductPrice,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('商品按鈕顯示價格'),
+            onChanged: (value) => setState(() => _showProductPrice = value),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _productButtonColorMode,
+            decoration: _fieldDecoration('商品按鈕顏色模式'),
+            items: _productButtonColorModeOptions
+                .map((option) => DropdownMenuItem<String>(
+                    value: option.value, child: Text(option.label)))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _productButtonColorMode = value);
+            },
+          ),
+        ]),
+        const SizedBox(height: 18),
+        section('購物車', [
+          TextField(
+            controller: _cartFontSizeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('購物車字大小'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _cartSizeController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('購物車大小'),
+          ),
+        ]),
+        const SizedBox(height: 18),
+        section('整體色系', [
+          DropdownButtonFormField<String>(
+            value: _themeColor,
+            decoration: _fieldDecoration('整體顏色'),
+            items: _themeColorOptions
+                .map((option) => DropdownMenuItem<String>(
+                    value: option.value, child: Text(option.label)))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _themeColor = value);
+            },
+          ),
+        ]),
+        const SizedBox(height: 18),
+        section('同步與儲存', [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.syncingMenu
+                  ? null
+                  : () => widget.onSyncMenu(_settings()),
+              style: _secondaryButtonStyle(foregroundColor: _greenDark),
+              icon: widget.syncingMenu
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.sync),
+              label: Text(widget.syncingMenu ? '同步中...' : '同步 Google Sheet 菜單'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              TextField(
-                  controller: _ipController,
-                  style: const TextStyle(fontSize: 20),
-                  decoration: _fieldDecoration('出單機 IP')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _portController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 20),
-                decoration: _fieldDecoration('Port'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _fontSizeController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 20),
-                decoration: _fieldDecoration('出單字大小'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _lineSpacingController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 20),
-                decoration: _fieldDecoration('出單上下間距'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _receiptFontFamily,
-                decoration: _fieldDecoration('出單字型'),
-                items: _receiptFontOptions
-                    .map(
-                      (option) => DropdownMenuItem<String>(
-                        value: option.family,
-                        child: Text(option.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _receiptFontFamily = value);
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _receiptPriceMode,
-                decoration: _fieldDecoration('價格列印方式'),
-                items: _receiptPriceModeOptions
-                    .map((option) => DropdownMenuItem<String>(
-                        value: option.value, child: Text(option.label)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _receiptPriceMode = value);
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _productButtonSize,
-                decoration: _fieldDecoration('商品按鈕大小'),
-                items: _productButtonSizeOptions
-                    .map((option) => DropdownMenuItem<String>(
-                        value: option.value, child: Text(option.label)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _productButtonSize = value);
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _productColumnsController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 20),
-                decoration: _fieldDecoration('每列商品數量'),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: widget.syncingMenu
-                      ? null
-                      : () => widget.onSyncMenu(_settings()),
-                  style: _secondaryButtonStyle(foregroundColor: _greenDark),
-                  icon: widget.syncingMenu
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.sync),
-                  label: Text(
-                      widget.syncingMenu ? '同步中...' : '同步 Google Sheet 菜單'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                      child: OutlinedButton(
-                          onPressed: () => widget.onTest(_settings()),
-                          style: _secondaryButtonStyle(),
-                          child: const Text('測試連線'))),
-                  const SizedBox(width: 12),
-                  Expanded(
-                      child: FilledButton(
-                          onPressed: () => widget.onSave(_settings()),
-                          style: _primaryButtonStyle(),
-                          child: const Text('儲存設定'))),
-                ],
-              ),
+              Expanded(
+                  child: OutlinedButton(
+                      onPressed: () => widget.onTest(_settings()),
+                      style: _secondaryButtonStyle(),
+                      child: const Text('測試連線'))),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: FilledButton(
+                      onPressed: () => widget.onSave(_settings()),
+                      style: _primaryButtonStyle(),
+                      child: const Text('儲存設定'))),
             ],
           ),
-        ),
+        ]),
       ],
     );
   }
@@ -2089,6 +2492,20 @@ class _PrinterPageState extends State<_PrinterPage> {
       productButtonSize: _normalizeProductButtonSize(_productButtonSize),
       productColumns: _normalizeProductColumns(
           int.tryParse(_productColumnsController.text.trim())),
+      productNameFontSize: _normalizeProductNameFontSize(
+          double.tryParse(_productNameFontSizeController.text.trim())),
+      productPriceFontSize: _normalizeProductPriceFontSize(
+          double.tryParse(_productPriceFontSizeController.text.trim())),
+      productButtonGap: _normalizeProductButtonGap(
+          double.tryParse(_productButtonGapController.text.trim())),
+      showProductPrice: _showProductPrice,
+      productButtonColorMode:
+          _normalizeProductButtonColorMode(_productButtonColorMode),
+      cartFontSize: _normalizeCartFontSize(
+          double.tryParse(_cartFontSizeController.text.trim())),
+      cartSize:
+          _normalizeCartSize(double.tryParse(_cartSizeController.text.trim())),
+      themeColor: _normalizeThemeColor(_themeColor),
       menuSheetUrl: _defaultMenuSheetCsvUrl,
       menuScriptUrl: _defaultMenuScriptUrl,
     );
@@ -2122,7 +2539,7 @@ class _MenuAdminPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.sizeOf(context).width >= 700;
+    final isWide = MediaQuery.sizeOf(context).width >= _tabletWideBreakpoint;
     final selectedCategory = _firstWhereOrNull(
         categories, (category) => category.id == selectedCategoryId);
     final visibleProducts = selectedCategory == null
