@@ -9,7 +9,8 @@ void main() {
       printedAt: DateTime(2026, 5, 9, 14, 41, 20),
       lines: [
         CartLine(
-          product: Product(id: 1, categoryId: 1, name: '陽春麵', price: 40),
+          product: Product(
+              id: 1, categoryId: 1, name: '陽春麵', price: 40, sortOrder: 0),
           quantity: 1,
         ),
       ],

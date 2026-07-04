@@ -241,12 +241,14 @@ class Product {
     required this.categoryId,
     required this.name,
     required this.price,
+    required this.sortOrder,
   });
 
   final int id;
   final int categoryId;
   final String name;
   final int price;
+  final int sortOrder;
 
   factory Product.fromMap(Map<String, Object?> map) {
     return Product(
@@ -254,6 +256,7 @@ class Product {
       categoryId: map['category_id'] as int,
       name: map['name'] as String,
       price: map['price'] as int,
+      sortOrder: (map['sort_order'] as int?) ?? (map['id'] as int),
     );
   }
 }
@@ -270,7 +273,9 @@ class AppSettings {
     required this.printerIp,
     required this.printerPort,
     required this.receiptFontSize,
+    required this.receiptPriceFontSize,
     required this.receiptLineSpacing,
+    required this.receiptVerticalPadding,
     required this.receiptFontFamily,
     required this.receiptPriceMode,
     required this.productButtonSize,
@@ -290,7 +295,9 @@ class AppSettings {
   final String printerIp;
   final int printerPort;
   final double receiptFontSize;
+  final double receiptPriceFontSize;
   final double receiptLineSpacing;
+  final double receiptVerticalPadding;
   final String receiptFontFamily;
   final String receiptPriceMode;
   final String productButtonSize;
@@ -354,9 +361,19 @@ double _normalizeReceiptFontSize(double? value) {
   return size > 0 ? size : 52;
 }
 
+double _normalizeReceiptPriceFontSize(double? value) {
+  final size = value ?? 42;
+  return size > 0 ? size : 42;
+}
+
 double _normalizeReceiptLineSpacing(double? value) {
   final spacing = value ?? 12;
   return spacing >= 0 ? spacing : 12;
+}
+
+double _normalizeReceiptVerticalPadding(double? value) {
+  final padding = value ?? 24;
+  return padding >= 0 ? padding : 24;
 }
 
 double _normalizeProductNameFontSize(double? value) {
@@ -470,7 +487,7 @@ class PosDatabase {
     final dbPath = await getDatabasesPath();
     final db = await openDatabase(
       p.join(dbPath, 'single_ipad_pos.db'),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE categories (
@@ -484,6 +501,7 @@ class PosDatabase {
             category_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             price INTEGER NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
           )
         ''');
@@ -500,6 +518,17 @@ class PosDatabase {
           )
         ''');
         await _insertSeedData(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+              'ALTER TABLE products ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+          final rows = await db.query('products', orderBy: 'id ASC');
+          for (var index = 0; index < rows.length; index++) {
+            await db.update('products', {'sort_order': index},
+                where: 'id = ?', whereArgs: [rows[index]['id']]);
+          }
+        }
       },
     );
     _database = db;
@@ -525,14 +554,18 @@ class PosDatabase {
       {'category_id': extraId, 'name': '加麵', 'price': 20},
     ];
 
-    for (final product in products) {
-      await db.insert('products', product);
+    for (var index = 0; index < products.length; index++) {
+      await db.insert('products', {...products[index], 'sort_order': index});
     }
 
     await db.insert('settings', {'key': 'printer_ip', 'value': ''});
     await db.insert('settings', {'key': 'printer_port', 'value': '9100'});
     await db.insert('settings', {'key': 'receipt_font_size', 'value': '52'});
+    await db
+        .insert('settings', {'key': 'receipt_price_font_size', 'value': '42'});
     await db.insert('settings', {'key': 'receipt_line_spacing', 'value': '12'});
+    await db
+        .insert('settings', {'key': 'receipt_vertical_padding', 'value': '24'});
     await db.insert('settings',
         {'key': 'receipt_font_family', 'value': _defaultReceiptFontFamily});
     await db.insert('settings',
@@ -568,7 +601,7 @@ class PosDatabase {
 
   Future<List<Product>> products() async {
     final db = await database;
-    final rows = await db.query('products', orderBy: 'id ASC');
+    final rows = await db.query('products', orderBy: 'sort_order ASC, id ASC');
     return rows.map(Product.fromMap).toList();
   }
 
@@ -595,10 +628,15 @@ class PosDatabase {
       required int price,
       required int categoryId}) async {
     final db = await database;
+    final maxRows = await db.rawQuery(
+        'SELECT MAX(sort_order) AS max_order FROM products WHERE category_id = ?',
+        [categoryId]);
+    final maxOrder = maxRows.first['max_order'] as int?;
     return db.insert('products', {
       'name': name,
       'price': price,
       'category_id': categoryId,
+      'sort_order': (maxOrder ?? -1) + 1,
     });
   }
 
@@ -620,6 +658,16 @@ class PosDatabase {
     await db.delete('products', where: 'id = ?', whereArgs: [product.id]);
   }
 
+  Future<void> updateProductOrder(List<Product> orderedProducts) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      for (var index = 0; index < orderedProducts.length; index++) {
+        await txn.update('products', {'sort_order': index},
+            where: 'id = ?', whereArgs: [orderedProducts[index].id]);
+      }
+    });
+  }
+
   Future<AppSettings> settings() async {
     final db = await database;
     final rows = await db.query('settings');
@@ -631,8 +679,12 @@ class PosDatabase {
       printerPort: int.tryParse(map['printer_port'] ?? '') ?? 9100,
       receiptFontSize: _normalizeReceiptFontSize(
           double.tryParse(map['receipt_font_size'] ?? '')),
+      receiptPriceFontSize: _normalizeReceiptPriceFontSize(
+          double.tryParse(map['receipt_price_font_size'] ?? '')),
       receiptLineSpacing: _normalizeReceiptLineSpacing(
           double.tryParse(map['receipt_line_spacing'] ?? '')),
+      receiptVerticalPadding: _normalizeReceiptVerticalPadding(
+          double.tryParse(map['receipt_vertical_padding'] ?? '')),
       receiptFontFamily:
           _normalizeReceiptFontFamily(map['receipt_font_family']),
       receiptPriceMode: _normalizeReceiptPriceMode(map['receipt_price_mode']),
@@ -680,8 +732,24 @@ class PosDatabase {
     await db.insert(
       'settings',
       {
+        'key': 'receipt_price_font_size',
+        'value': settings.receiptPriceFontSize.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
         'key': 'receipt_line_spacing',
         'value': settings.receiptLineSpacing.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'receipt_vertical_padding',
+        'value': settings.receiptVerticalPadding.toStringAsFixed(0)
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -845,7 +913,8 @@ class PosDatabase {
         await txn.delete('categories');
 
         final categoryIds = <String, int>{};
-        for (final row in parsedRows) {
+        for (var index = 0; index < parsedRows.length; index++) {
+          final row = parsedRows[index];
           var categoryId = categoryIds[row.category];
           if (categoryId == null) {
             categoryId = await txn.insert('categories', {'name': row.category});
@@ -854,7 +923,8 @@ class PosDatabase {
           await txn.insert('products', {
             'category_id': categoryId,
             'name': row.name,
-            'price': row.price
+            'price': row.price,
+            'sort_order': index
           });
         }
       });
@@ -990,7 +1060,9 @@ class ReceiptPrinter {
     final raster = await _receiptRaster(
       receipt,
       itemFontSize: settings.receiptFontSize,
+      priceFontSize: settings.receiptPriceFontSize,
       lineSpacing: settings.receiptLineSpacing,
+      verticalPadding: settings.receiptVerticalPadding,
       fontFamily: settings.receiptFontFamily,
       priceMode: settings.receiptPriceMode,
     );
@@ -1034,7 +1106,9 @@ class ReceiptPrinter {
   Future<Uint8List> _receiptRaster(
     OrderReceipt receipt, {
     required double itemFontSize,
+    required double priceFontSize,
     required double lineSpacing,
+    required double verticalPadding,
     required String fontFamily,
     required String priceMode,
   }) async {
@@ -1047,7 +1121,11 @@ class ReceiptPrinter {
     final rowNameWidth =
         contentWidth - _qtyWidth - (priceSameLine ? _priceWidth : 0);
     final normalizedItemFontSize = _normalizeReceiptFontSize(itemFontSize);
+    final normalizedPriceFontSize =
+        _normalizeReceiptPriceFontSize(priceFontSize);
     final normalizedLineSpacing = _normalizeReceiptLineSpacing(lineSpacing);
+    final normalizedVerticalPadding =
+        _normalizeReceiptVerticalPadding(verticalPadding);
     final priceLineSpacing = normalizedLineSpacing / 3;
     final normalizedFontFamily = _normalizeReceiptFontFamily(fontFamily);
     final rowPainters = receipt.lines
@@ -1065,7 +1143,7 @@ class ReceiptPrinter {
                 align: TextAlign.center),
             price: _textPainter(
               showPrice ? '${line.product.price * line.quantity}' : '',
-              normalizedItemFontSize,
+              normalizedPriceFontSize,
               FontWeight.w600,
               maxWidth: priceSameLine ? _priceWidth : contentWidth,
               fontFamily: normalizedFontFamily,
@@ -1075,7 +1153,7 @@ class ReceiptPrinter {
         )
         .toList();
 
-    double height = 28;
+    double height = normalizedVerticalPadding + 4;
     height += 18;
     height += _textPainter('單號:${receipt.orderNumber}', 34, FontWeight.w600,
                 maxWidth: contentWidth,
@@ -1097,7 +1175,8 @@ class ReceiptPrinter {
                 fontFamily: normalizedFontFamily,
                 align: TextAlign.center)
             .height +
-        42;
+        normalizedVerticalPadding +
+        18;
 
     final imageHeight = height.ceil();
     final recorder = ui.PictureRecorder();
@@ -1106,7 +1185,7 @@ class ReceiptPrinter {
     canvas.drawRect(
         Rect.fromLTWH(0, 0, width.toDouble(), imageHeight.toDouble()), paint);
 
-    double y = 24;
+    double y = normalizedVerticalPadding;
     _drawDivider(canvas, y, width);
     y += 18;
     y = _drawText(canvas, '單號:${receipt.orderNumber}', _margin, y, contentWidth,
@@ -1285,7 +1364,9 @@ class _PosHomePageState extends State<PosHomePage> {
     printerIp: '',
     printerPort: 9100,
     receiptFontSize: 52,
+    receiptPriceFontSize: 42,
     receiptLineSpacing: 12,
+    receiptVerticalPadding: 24,
     receiptFontFamily: _defaultReceiptFontFamily,
     receiptPriceMode: _defaultReceiptPriceMode,
     productButtonSize: _defaultProductButtonSize,
@@ -1304,6 +1385,7 @@ class _PosHomePageState extends State<PosHomePage> {
   bool _loading = true;
   bool _checkingOut = false;
   bool _syncingMenu = false;
+  int _categoryViewVersion = 0;
 
   @override
   void initState() {
@@ -1386,8 +1468,12 @@ class _PosHomePageState extends State<PosHomePage> {
           cartCount: _cartCount,
           cartTotal: _cartTotal,
           settings: _settings,
+          categoryViewVersion: _categoryViewVersion,
           checkingOut: _checkingOut,
-          onCategorySelected: (id) => setState(() => _activeCategoryId = id),
+          onCategorySelected: (id) => setState(() {
+            _activeCategoryId = id;
+            _categoryViewVersion++;
+          }),
           onProductTap: _addToCart,
           onQuantityChange: _changeQuantity,
           onClear: _confirmClearCart,
@@ -1404,6 +1490,7 @@ class _PosHomePageState extends State<PosHomePage> {
           onAddProduct: () => _editProduct(),
           onEditProduct: _editProduct,
           onDeleteProduct: _deleteProduct,
+          onReorderProducts: _reorderProducts,
         ),
       _ => _SettingsPage(
           settings: _settings,
@@ -1478,7 +1565,11 @@ class _PosHomePageState extends State<PosHomePage> {
       );
       await _printer.printReceipt(settings: _settings, receipt: receipt);
       if (!mounted) return;
-      setState(_cart.clear);
+      setState(() {
+        _cart.clear();
+        _activeCategoryId = _categories.isEmpty ? null : _categories.first.id;
+        _categoryViewVersion++;
+      });
       _snack('結帳完成，已送出列印');
     } catch (error) {
       _snack('結帳失敗：$error');
@@ -1598,6 +1689,24 @@ class _PosHomePageState extends State<PosHomePage> {
     if (!ok) return;
     await _database.deleteProduct(product);
     setState(() => _cart.remove(product.id));
+    await _load();
+    await _pushMenuIfConfigured();
+  }
+
+  Future<void> _reorderProducts(
+      List<Product> visibleProducts, int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) newIndex -= 1;
+    if (oldIndex == newIndex ||
+        oldIndex < 0 ||
+        newIndex < 0 ||
+        oldIndex >= visibleProducts.length ||
+        newIndex >= visibleProducts.length) {
+      return;
+    }
+    final reordered = [...visibleProducts];
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+    await _database.updateProductOrder(reordered);
     await _load();
     await _pushMenuIfConfigured();
   }
@@ -1829,6 +1938,7 @@ class _OrderPage extends StatelessWidget {
     required this.cartCount,
     required this.cartTotal,
     required this.settings,
+    required this.categoryViewVersion,
     required this.checkingOut,
     required this.onCategorySelected,
     required this.onProductTap,
@@ -1844,6 +1954,7 @@ class _OrderPage extends StatelessWidget {
   final int cartCount;
   final int cartTotal;
   final AppSettings settings;
+  final int categoryViewVersion;
   final bool checkingOut;
   final ValueChanged<int> onCategorySelected;
   final ValueChanged<Product> onProductTap;
@@ -1906,6 +2017,7 @@ class _OrderPage extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(
             child: GridView.builder(
+              key: ValueKey('$activeCategoryId-$categoryViewVersion'),
               itemCount: visibleProducts.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
@@ -2134,8 +2246,10 @@ class _CartPane extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Row(
+            textDirection: TextDirection.rtl,
             children: [
-              Expanded(
+              SizedBox(
+                  width: 96,
                   child: OutlinedButton(
                       onPressed: lines.isEmpty ? null : onClear,
                       style: _secondaryButtonStyle(foregroundColor: _red),
@@ -2203,7 +2317,9 @@ class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _ipController;
   late final TextEditingController _portController;
   late final TextEditingController _fontSizeController;
+  late final TextEditingController _priceFontSizeController;
   late final TextEditingController _lineSpacingController;
+  late final TextEditingController _verticalPaddingController;
   late final TextEditingController _productColumnsController;
   late final TextEditingController _productNameFontSizeController;
   late final TextEditingController _productPriceFontSizeController;
@@ -2225,8 +2341,12 @@ class _SettingsPageState extends State<_SettingsPage> {
         TextEditingController(text: widget.settings.printerPort.toString());
     _fontSizeController = TextEditingController(
         text: widget.settings.receiptFontSize.toStringAsFixed(0));
+    _priceFontSizeController = TextEditingController(
+        text: widget.settings.receiptPriceFontSize.toStringAsFixed(0));
     _lineSpacingController = TextEditingController(
         text: widget.settings.receiptLineSpacing.toStringAsFixed(0));
+    _verticalPaddingController = TextEditingController(
+        text: widget.settings.receiptVerticalPadding.toStringAsFixed(0));
     _productColumnsController =
         TextEditingController(text: widget.settings.productColumns.toString());
     _productNameFontSizeController = TextEditingController(
@@ -2256,7 +2376,9 @@ class _SettingsPageState extends State<_SettingsPage> {
     _ipController.dispose();
     _portController.dispose();
     _fontSizeController.dispose();
+    _priceFontSizeController.dispose();
     _lineSpacingController.dispose();
+    _verticalPaddingController.dispose();
     _productColumnsController.dispose();
     _productNameFontSizeController.dispose();
     _productPriceFontSizeController.dispose();
@@ -2314,10 +2436,24 @@ class _SettingsPageState extends State<_SettingsPage> {
           ),
           const SizedBox(height: 12),
           TextField(
+            controller: _priceFontSizeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('列印金額字大小'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
             controller: _lineSpacingController,
             keyboardType: TextInputType.number,
             style: const TextStyle(fontSize: 20),
             decoration: _fieldDecoration('出單上下間距'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _verticalPaddingController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('列印上下留白'),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -2485,8 +2621,12 @@ class _SettingsPageState extends State<_SettingsPage> {
       printerPort: int.tryParse(_portController.text.trim()) ?? 9100,
       receiptFontSize: _normalizeReceiptFontSize(
           double.tryParse(_fontSizeController.text.trim())),
+      receiptPriceFontSize: _normalizeReceiptPriceFontSize(
+          double.tryParse(_priceFontSizeController.text.trim())),
       receiptLineSpacing: _normalizeReceiptLineSpacing(
           double.tryParse(_lineSpacingController.text.trim())),
+      receiptVerticalPadding: _normalizeReceiptVerticalPadding(
+          double.tryParse(_verticalPaddingController.text.trim())),
       receiptFontFamily: _normalizeReceiptFontFamily(_receiptFontFamily),
       receiptPriceMode: _normalizeReceiptPriceMode(_receiptPriceMode),
       productButtonSize: _normalizeProductButtonSize(_productButtonSize),
@@ -2524,6 +2664,7 @@ class _MenuAdminPage extends StatelessWidget {
     required this.onAddProduct,
     required this.onEditProduct,
     required this.onDeleteProduct,
+    required this.onReorderProducts,
   });
 
   final List<Category> categories;
@@ -2536,6 +2677,8 @@ class _MenuAdminPage extends StatelessWidget {
   final VoidCallback onAddProduct;
   final ValueChanged<Product> onEditProduct;
   final ValueChanged<Product> onDeleteProduct;
+  final void Function(List<Product> products, int oldIndex, int newIndex)
+      onReorderProducts;
 
   @override
   Widget build(BuildContext context) {
@@ -2575,9 +2718,14 @@ class _MenuAdminPage extends StatelessWidget {
     final productPanel = _AdminPanel(
       title: selectedCategory == null ? '商品' : '${selectedCategory.name}商品',
       onAdd: onAddProduct,
+      onReorder: visibleProducts.length < 2
+          ? null
+          : (oldIndex, newIndex) =>
+              onReorderProducts(visibleProducts, oldIndex, newIndex),
       children: visibleProducts
           .map(
             (product) => ListTile(
+              key: ValueKey('product-${product.id}'),
               tileColor: Colors.white,
               shape: RoundedRectangleBorder(
                   side: const BorderSide(color: _line),
@@ -2622,11 +2770,15 @@ class _MenuAdminPage extends StatelessWidget {
 
 class _AdminPanel extends StatelessWidget {
   const _AdminPanel(
-      {required this.title, required this.onAdd, required this.children});
+      {required this.title,
+      required this.onAdd,
+      required this.children,
+      this.onReorder});
 
   final String title;
   final VoidCallback onAdd;
   final List<Widget> children;
+  final ReorderCallback? onReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -2657,12 +2809,25 @@ class _AdminPanel extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemBuilder: (context, index) => children[index],
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemCount: children.length,
-            ),
+            child: onReorder == null
+                ? ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemBuilder: (context, index) => children[index],
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemCount: children.length,
+                  )
+                : ReorderableListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    buildDefaultDragHandles: true,
+                    onReorder: onReorder!,
+                    itemBuilder: (context, index) => Padding(
+                      key: children[index].key ?? ValueKey(index),
+                      padding: EdgeInsets.only(
+                          bottom: index == children.length - 1 ? 0 : 8),
+                      child: children[index],
+                    ),
+                    itemCount: children.length,
+                  ),
           ),
         ],
       ),
