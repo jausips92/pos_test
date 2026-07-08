@@ -283,6 +283,8 @@ class AppSettings {
     required this.productNameFontSize,
     required this.productPriceFontSize,
     required this.productButtonGap,
+    required this.categoryButtonHeight,
+    required this.categoryFontSize,
     required this.showProductPrice,
     required this.productButtonColorMode,
     required this.cartFontSize,
@@ -305,6 +307,8 @@ class AppSettings {
   final double productNameFontSize;
   final double productPriceFontSize;
   final double productButtonGap;
+  final double categoryButtonHeight;
+  final double categoryFontSize;
   final bool showProductPrice;
   final String productButtonColorMode;
   final double cartFontSize;
@@ -389,6 +393,16 @@ double _normalizeProductPriceFontSize(double? value) {
 double _normalizeProductButtonGap(double? value) {
   final gap = value ?? 12;
   return gap >= 0 ? gap : 12;
+}
+
+double _normalizeCategoryButtonHeight(double? value) {
+  final height = value ?? 66;
+  return height > 0 ? height : 66;
+}
+
+double _normalizeCategoryFontSize(double? value) {
+  final size = value ?? 22;
+  return size > 0 ? size : 22;
 }
 
 double _normalizeCartFontSize(double? value) {
@@ -578,6 +592,9 @@ class PosDatabase {
     await db
         .insert('settings', {'key': 'product_price_font_size', 'value': '23'});
     await db.insert('settings', {'key': 'product_button_gap', 'value': '12'});
+    await db
+        .insert('settings', {'key': 'category_button_height', 'value': '66'});
+    await db.insert('settings', {'key': 'category_font_size', 'value': '22'});
     await db.insert('settings', {'key': 'show_product_price', 'value': 'true'});
     await db.insert('settings', {
       'key': 'product_button_color_mode',
@@ -698,6 +715,10 @@ class PosDatabase {
           double.tryParse(map['product_price_font_size'] ?? '')),
       productButtonGap: _normalizeProductButtonGap(
           double.tryParse(map['product_button_gap'] ?? '')),
+      categoryButtonHeight: _normalizeCategoryButtonHeight(
+          double.tryParse(map['category_button_height'] ?? '')),
+      categoryFontSize: _normalizeCategoryFontSize(
+          double.tryParse(map['category_font_size'] ?? '')),
       showProductPrice:
           _parseBoolSetting(map['show_product_price'], fallback: true),
       productButtonColorMode:
@@ -806,6 +827,22 @@ class PosDatabase {
       {
         'key': 'product_button_gap',
         'value': settings.productButtonGap.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'category_button_height',
+        'value': settings.categoryButtonHeight.toStringAsFixed(0)
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await db.insert(
+      'settings',
+      {
+        'key': 'category_font_size',
+        'value': settings.categoryFontSize.toStringAsFixed(0)
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -1374,6 +1411,8 @@ class _PosHomePageState extends State<PosHomePage> {
     productNameFontSize: 21,
     productPriceFontSize: 23,
     productButtonGap: 12,
+    categoryButtonHeight: 66,
+    categoryFontSize: 22,
     showProductPrice: true,
     productButtonColorMode: _defaultProductButtonColorMode,
     cartFontSize: 18,
@@ -1976,6 +2015,10 @@ class _OrderPage extends StatelessWidget {
     final productPriceFontSize =
         _normalizeProductPriceFontSize(settings.productPriceFontSize);
     final productGap = _normalizeProductButtonGap(settings.productButtonGap);
+    final categoryButtonHeight =
+        _normalizeCategoryButtonHeight(settings.categoryButtonHeight);
+    final categoryFontSize =
+        _normalizeCategoryFontSize(settings.categoryFontSize);
     final productColorMode =
         _normalizeProductButtonColorMode(settings.productButtonColorMode);
     final palette = _paletteFor(settings.themeColor);
@@ -1989,25 +2032,30 @@ class _OrderPage extends StatelessWidget {
           const _Header(title: '點餐', subtitle: '選擇商品加入購物車'),
           const SizedBox(height: 16),
           SizedBox(
-            height: 54,
+            height: categoryButtonHeight + 4,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemBuilder: (context, index) {
                 final category = categories[index];
                 final selected = category.id == activeCategoryId;
-                return ChoiceChip(
-                  label: Text(category.name),
-                  selected: selected,
-                  selectedColor: palette.primary,
-                  backgroundColor: _panel,
-                  side: BorderSide(color: selected ? palette.primary : _line),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(_radius)),
-                  labelStyle: TextStyle(
-                      color: selected ? Colors.white : _ink,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800),
-                  onSelected: (_) => onCategorySelected(category.id),
+                return SizedBox(
+                  height: categoryButtonHeight,
+                  child: ChoiceChip(
+                    label: Text(category.name),
+                    selected: selected,
+                    selectedColor: palette.primary,
+                    backgroundColor: _panel,
+                    side: BorderSide(color: selected ? palette.primary : _line),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(_radius)),
+                    labelStyle: TextStyle(
+                        color: selected ? Colors.white : _ink,
+                        fontSize: categoryFontSize,
+                        fontWeight: FontWeight.w800),
+                    labelPadding:
+                        const EdgeInsets.symmetric(horizontal: 12),
+                    onSelected: (_) => onCategorySelected(category.id),
+                  ),
                 );
               },
               separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -2324,6 +2372,8 @@ class _SettingsPageState extends State<_SettingsPage> {
   late final TextEditingController _productNameFontSizeController;
   late final TextEditingController _productPriceFontSizeController;
   late final TextEditingController _productButtonGapController;
+  late final TextEditingController _categoryButtonHeightController;
+  late final TextEditingController _categoryFontSizeController;
   late final TextEditingController _cartFontSizeController;
   late final TextEditingController _cartSizeController;
   late String _receiptFontFamily;
@@ -2355,6 +2405,10 @@ class _SettingsPageState extends State<_SettingsPage> {
         text: widget.settings.productPriceFontSize.toStringAsFixed(0));
     _productButtonGapController = TextEditingController(
         text: widget.settings.productButtonGap.toStringAsFixed(0));
+    _categoryButtonHeightController = TextEditingController(
+        text: widget.settings.categoryButtonHeight.toStringAsFixed(0));
+    _categoryFontSizeController = TextEditingController(
+        text: widget.settings.categoryFontSize.toStringAsFixed(0));
     _cartFontSizeController = TextEditingController(
         text: widget.settings.cartFontSize.toStringAsFixed(0));
     _cartSizeController = TextEditingController(
@@ -2383,6 +2437,8 @@ class _SettingsPageState extends State<_SettingsPage> {
     _productNameFontSizeController.dispose();
     _productPriceFontSizeController.dispose();
     _productButtonGapController.dispose();
+    _categoryButtonHeightController.dispose();
+    _categoryFontSizeController.dispose();
     _cartFontSizeController.dispose();
     _cartSizeController.dispose();
     super.dispose();
@@ -2502,6 +2558,20 @@ class _SettingsPageState extends State<_SettingsPage> {
             keyboardType: TextInputType.number,
             style: const TextStyle(fontSize: 20),
             decoration: _fieldDecoration('商品按鈕間距'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _categoryButtonHeightController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('類別按鈕高度'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _categoryFontSizeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 20),
+            decoration: _fieldDecoration('類別文字大小'),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -2638,6 +2708,10 @@ class _SettingsPageState extends State<_SettingsPage> {
           double.tryParse(_productPriceFontSizeController.text.trim())),
       productButtonGap: _normalizeProductButtonGap(
           double.tryParse(_productButtonGapController.text.trim())),
+      categoryButtonHeight: _normalizeCategoryButtonHeight(
+          double.tryParse(_categoryButtonHeightController.text.trim())),
+      categoryFontSize: _normalizeCategoryFontSize(
+          double.tryParse(_categoryFontSizeController.text.trim())),
       showProductPrice: _showProductPrice,
       productButtonColorMode:
           _normalizeProductButtonColorMode(_productButtonColorMode),
